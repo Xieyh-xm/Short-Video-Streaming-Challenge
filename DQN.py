@@ -97,3 +97,77 @@ class DQN:
         self.target_net.load_state_dict(torch.load(path + 'dqn_checkpoint.pth'))
         for target_param, param in zip(self.target_net.parameters(), self.policy_net.parameters()):
             param.data.copy_(target_param.data)
+
+
+class MLP(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        ''' 初始化q网络，为全连接网络
+            state_dim: 输入的特征数即环境的状态维度
+            action_dim: 输出的动作维度
+        '''
+        super(MLP, self).__init__()
+        self.fc1 = nn.Linear(state_dim, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.fc3 = nn.Linear(128, action_dim)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        return self.fc3(x)
+
+
+class CNN(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        ''' 初始化q网络，为CNN网络
+            state_dim: 输入的特征数即环境的状态维度
+            action_dim: 输出的动作维度
+        '''
+        super(CNN, self).__init__()
+        # Conv1d
+        self.layer1_shape = 128  # conv1d的输出通道个数
+        self.numFcInput = (4 * 8) * self.layer1_shape + 15
+        self.layer2_shape = 128
+        # 过去10个chunk的吞吐量throughput 1x10
+        self.tConv1d = nn.Conv1d(1, self.layer1_shape, 3)  # 输入通道=1
+        # 过去10个chunk的下载时刻playtime 1x10
+        self.pConv1d = nn.Conv1d(1, self.layer1_shape, 3)
+        # 5个视频未来10个chunk的3级video_size 15x10
+        self.vConv1d = nn.Conv1d(15, self.layer1_shape, 3)
+        # 5个视频未来10个chunk的conditional_retent_rate 5x10
+        self.rConv1d = nn.Conv1d(5, self.layer1_shape, 3)
+
+        # 5个视频的buffer 5x1 (直接输入全连接)
+        # 5个视频剩余的chunk数remain chunks 5x1 (直接输入全连接)
+        # 5个视频上一个chunk的质量等级last_level 5x1 (直接输入全连接)
+
+        # 2层全连接
+        self.fc1 = nn.Linear(self.numFcInput, self.layer2_shape)
+        self.p_output = nn.Linear(self.layer2_shape, action_dim)
+
+    def forward(self, inputs):
+        # 过去10个chunk的吞吐量throughput 1x10
+        throughputConv = F.relu(self.tConv1d(inputs[:, 0:1, :]), inplace=True)
+        # 过去10个chunk的下载时刻playtime 1x10
+        playtimeConv = F.relu(self.pConv1d(inputs[:, 1:2, :]), inplace=True)
+        # 5个视频未来10个chunk的3级video_size 15x10
+        video_sizeConv = F.relu(self.vConv1d(inputs[:, 2:17, :]), inplace=True)
+        # 5个视频未来10个chunk的conditional_retent_rate 5x10
+        ret_rateConv = F.relu(self.rConv1d(inputs[:, 17:22, :]), inplace=True)
+
+        # flatten
+        throughput_flatten = throughputConv.view(throughputConv.shape[0], -1)
+        playtime_flatten = playtimeConv.view(playtimeConv.shape[0], -1)
+        video_size_flatten = video_sizeConv.view(video_sizeConv.shape[0], -1)
+        ret_rate_flatten = ret_rateConv.view(ret_rateConv.shape[0], -1)
+        # 5个视频的buffer 5x1
+        # 5个视频剩余的chunk数remaining chunks 5x1
+        # 5个视频上一chunk的质量等级last_level 5x1
+        buffer_flatten = inputs[:, 22:27, :].view(inputs[:, 22:27, :].shape[0], -1)
+        remain_chunks_flatten = inputs[:, 27:32, :].view(inputs[:, 27:32, :].shape[0], -1)
+        last_level_flatten = inputs[:, 32:37, :].view(inputs[:, 32:37, :].shape[0], -1)
+
+        merge = torch.cat([throughput_flatten, playtime_flatten, video_size_flatten, ret_rate_flatten, buffer_flatten,
+                           remain_chunks_flatten, last_level_flatten], 1)
+        fc1Out = F.relu(self.fc1(merge), inplace=True)
+        q_value = self.p_output(fc1Out)
+        return q_value

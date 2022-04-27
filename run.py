@@ -8,8 +8,8 @@ from simulator import controller as env, short_video_load_trace
 parser = argparse.ArgumentParser()
 parser.add_argument('--quickstart', type=str, default='', help='Is testing quickstart')
 parser.add_argument('--baseline', type=str, default='', help='Is testing baseline')
-parser.add_argument('--user', type=str, default='./', help='The relative path of your file dir, default is current dir')
-parser.add_argument('--trace', type=str, default='fixed', help='The network trace you are testing (fixed, high, low, medium, middle)')
+parser.add_argument('--solution', type=str, default='./', help='The relative path of your file dir, default is current dir')
+parser.add_argument('--trace', type=str, default='mixed', help='The network trace you are testing (fixed, high, low, medium, middle)')
 args = parser.parse_args()
 
 RANDOM_SEED = 42  # the random seed for user retention
@@ -19,6 +19,7 @@ seeds = np.random.randint(100, size=(7, 2))
 VIDEO_BIT_RATE = [750, 1200, 1850]  # Kbps
 SUMMARY_DIR = 'logs'
 LOG_FILE = 'logs/log.txt'
+log_file = None
 
 # QoE arguments
 alpha = 1
@@ -28,33 +29,52 @@ theta = 0.5
 ALL_VIDEO_NUM = 7
 # baseline_QoE = 600  # baseline's QoE
 # TOLERANCE = 0.1  # The tolerance of the QoE decrease
-MIN_QOE = -1e9
+MIN_QOE = -1e4
 all_cooked_time = []
 all_cooked_bw = []
 
-# log file
-log_file = open(LOG_FILE, 'w')
+# record the last chunk(which will be played) of each video to aid the calculation of smoothness
+last_chunk_bitrate = [-1, -1, -1, -1, -1, -1, -1]
+
+# calculate the smooth penalty for an action to download:
+# chunk:[chunk_id] of the video:[download_video_id] with bitrate:[quality]
+def get_smooth(net_env, download_video_id, chunk_id, quality):
+    if download_video_id == 0 and chunk_id == 0:  # is the first chunk of all
+        return 0
+    if chunk_id == 0:  # needs to find the last chunk of the last video
+        last_bitrate = last_chunk_bitrate[download_video_id - 1]
+    else:
+        last_bitrate = net_env.players[download_video_id - net_env.get_start_video_id()].get_downloaded_bitrate()[chunk_id - 1]
+    return abs(quality - VIDEO_BIT_RATE[last_bitrate])
 
 
 def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
     global LOG_FILE
+    global log_file
     if isBaseline:  # Testing baseline algorithm
         sys.path.append('./baseline/')
         if user_id == 'no_save':
             import no_save as Solution
             LOG_FILE = 'logs/log_nosave.txt'
+            log_file = open(LOG_FILE, 'w')
         sys.path.remove('./baseline/')
     elif isQuickstart:  # Testing quickstart algorithm
         sys.path.append('./quickstart/')
         if user_id == 'fixed_preload':
             import fix_preload as Solution
             LOG_FILE = 'logs/log_fixpreload.txt'
+            log_file = open(LOG_FILE, 'w')
         sys.path.remove('./quickstart/')        
     else:  # Testing participant's algorithm
         sys.path.append(user_id)
-        import Solution
+        import solution as Solution
         sys.path.remove(user_id)
         LOG_FILE = 'logs/log.txt'
+        log_file = open(LOG_FILE, 'w')
+
+    # start the test
+    print('------------trace ', trace_id, '--------------', file=log_file)
+
     solution = Solution.Algorithm()
     solution.Initialize()
 
@@ -63,6 +83,12 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
 
     # Decision variables
     download_video_id, bit_rate, sleep_time = solution.run(0, 0, 0, False, 0, net_env.players, True)  # take the first step
+
+    assert 0 <= bit_rate <= 2, "Your chosen bitrate [" + str(bit_rate) + "] is out of range. "\
+        + "\n   % Hint: you can only choose bitrate 0 - 2 %"
+    assert 0 <= download_video_id <= 4, "The video you choose is not in the current Recommend Queue. \
+        \n   % You can only choose the current play video and its following four videos %"
+
     # output the first step
     if sleep_time != 0:
         print("You choose to sleep for ", sleep_time, " ms", file=log_file)
@@ -76,7 +102,6 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
     sum_wasted_bytes = 0
     QoE = 0
     last_played_chunk = -1  # record the last played chunk
-    last_bitrate = -1
     bandwidth_usage = 0  # record total bandwidth usage
 
     while True:
@@ -90,11 +115,11 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
             # last downloaded chunk id
             download_chunk = net_env.players[download_video_id - net_env.get_start_video_id()].get_chunk_counter()
             if max_watch_chunk_id >= download_chunk:  # the downloaded chunk will be played
+                if download_chunk == max_watch_chunk_id:  # maintain the last_chunk_bitrate array
+                    last_chunk_bitrate[download_video_id] = bit_rate
                 quality = VIDEO_BIT_RATE[bit_rate]
-                if last_bitrate != -1:  # is not the first chunk to play
-                    smooth = abs(quality - VIDEO_BIT_RATE[last_bitrate])
-                    # print("downloading ", download_video_id, "chunk ", download_chunk, ", bitrate switching from ", last_bitrate, " to ", bit_rate)
-                last_bitrate = bit_rate
+                smooth = get_smooth(net_env, download_video_id, download_chunk, quality)
+                print("Causing smooth penalty: ", smooth, file=log_file)
 
 
         delay, rebuf, video_size, end_of_video, \
@@ -145,7 +170,7 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
 
         if QoE < MIN_QOE:  # Prevent dead loops
             print('Your QoE is too low...(Your video seems to have stuck forever) Please check for errors!')
-            return
+            return np.array([-1e9, bandwidth_usage,  QoE, sum_wasted_bytes, net_env.get_wasted_time_ratio()])
 
         # play over all videos
         if play_video_id >= ALL_VIDEO_NUM:
@@ -173,10 +198,9 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
     # wasted_bytes
     print("Your sum of wasted bytes is: ", sum_wasted_bytes)
     print("Your download/watch ratio (downloaded time / total watch time) is: ", net_env.get_wasted_time_ratio())
-    # if QoE >= baseline_QoE * (1-TOLERANCE):  # if your QoE is in a tolerated range
-    #     print("Your QoE meets the standard.")
-    # else:  # if your QoE is out of tolerance
-    #     print("Your QoE is too low!")
+
+    # end the test
+    print('------------trace ', trace_id, '--------------\n\n', file=log_file)
     return np.array([S, bandwidth_usage,  QoE, sum_wasted_bytes, net_env.get_wasted_time_ratio()])
 
 
@@ -187,9 +211,7 @@ def test_all_traces(isBaseline, isQuickstart, user_id, trace, user_sample_id):
     all_cooked_time, all_cooked_bw = short_video_load_trace.load_trace(cooked_trace_folder)
     for i in range(len(all_cooked_time)):
         print('------------trace ', i, '--------------')
-        print('------------trace ', i, '--------------', file=log_file)
         avg += test(isBaseline, isQuickstart, user_id, i, user_sample_id)
-        print('------------trace ', i, '--------------\n\n', file=log_file)
         print('---------------------------------------\n\n')
     avg /= len(all_cooked_time)
     print("\n\nYour average indexes under [", trace, "] network is: ")
@@ -208,7 +230,7 @@ def test_user_samples(isBaseline, isQuickstart, user_id, trace, sample_cnt):  # 
         global seeds
         np.random.seed(seed_for_sample[j])
         seeds = np.random.randint(10000, size=(7, 2))  # reset the sample random seeds
-        avgs += test_all_traces(j, isBaseline, isQuickstart, user_id, trace, j)
+        avgs += test_all_traces(isBaseline, isQuickstart, user_id, trace, j)
     avgs /= sample_cnt
     print("Score: ", avgs[0])
     print("Bandwidth Usage: ", avgs[1])
@@ -218,9 +240,9 @@ def test_user_samples(isBaseline, isQuickstart, user_id, trace, sample_cnt):  # 
 
 
 if __name__ == '__main__':
-    assert args.trace in ["fixed", "high", "low", "medium", "middle"]
+    assert args.trace in ["mixed", "high", "low", "medium"]
     if args.baseline == '' and args.quickstart == '':
-        test_all_traces(False, False, args.user, args.trace, 0)  # 0 means the first user sample.
+        test_all_traces(False, False, args.solution, args.trace, 0)  # 0 means the first user sample.
     elif args.quickstart != '':
         test_all_traces(False, True, args.quickstart, args.trace, 0)
     else:

@@ -1,4 +1,3 @@
-import model
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -45,8 +44,8 @@ class DQN:
                                          math.exp(-1. * frame_idx / cfg.epsilon_decay)
         self.batch_size = cfg.batch_size
         # Network
-        self.policy_net = model.MLP(state_dim, action_dim).to(self.device)
-        self.target_net = model.MLP(state_dim, action_dim).to(self.device)
+        self.policy_net = CNN(state_dim, action_dim).to(self.device)
+        self.target_net = CNN(state_dim, action_dim).to(self.device)
         # copy
         for target_param, param in zip(self.target_net.parameters(), self.policy_net.parameters()):
             target_param.data.copy_(param.data)

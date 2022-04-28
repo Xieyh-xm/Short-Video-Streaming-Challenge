@@ -53,10 +53,12 @@ class DQN:
         self.memory = ReplayBuffer(cfg.memory_capacity)  # 经验回放
 
     def choose_action(self, state):
+        # todo: add mask
         self.frame_idx += 1
         if random.random() > self.epsilon(self.frame_idx):
             with torch.no_grad():
-                state = torch.tensor([state], device=self.device, dtype=torch.float32)
+                # state = torch.tensor([state], device=self.device, dtype=torch.float32)
+                # state = torch.tensor(state, device=self.device, dtype=torch.float32)
                 q_values = self.policy_net(state)
                 action = q_values.max(1)[1].item()  # 选择Q值最大的动作
         else:
@@ -70,10 +72,10 @@ class DQN:
         # 从经验回放中(replay memory)中随机采样一个批量的转移(transition)
         state_batch, action_batch, reward_batch, next_state_batch, done_batch = self.memory.sample(self.batch_size)
         # 转为张量
-        state_batch = torch.tensor(state_batch, device=self.device, dtype=torch.float)
+        state_batch = torch.tensor(state_batch, device=self.device, dtype=torch.float).squeeze(1)
         action_batch = torch.tensor(action_batch, device=self.device).unsqueeze(1)
         reward_batch = torch.tensor(reward_batch, device=self.device, dtype=torch.float)
-        next_state_batch = torch.tensor(next_state_batch, device=self.device, dtype=torch.float)
+        next_state_batch = torch.tensor(next_state_batch, device=self.device, dtype=torch.float).squeeze(1)
         done_batch = torch.tensor(np.float32(done_batch), device=self.device)
 
         q_values = self.policy_net(state_batch).gather(dim=1, index=action_batch)  # 计算当前状态(s_t,a)对应的Q(s_t, a)
@@ -144,14 +146,24 @@ class CNN(nn.Module):
         self.p_output = nn.Linear(self.layer2_shape, action_dim)
 
     def forward(self, inputs):
+        # todo:调整state的维度
+        throughput = inputs[:, 0:10].unsqueeze(1) / 1000000.0
+        playtime = inputs[:, 10:20].unsqueeze(1) / 1000.0
+        video_size = torch.reshape(inputs[:, 20:170], (inputs[:, 20:170].shape[0], 15, 10)) / 1000000.0
+        ret_rate = torch.reshape(inputs[:, 170:220], (inputs[:, 170:220].shape[0], 5, 10))
+
         # 过去10个chunk的吞吐量throughput 1x10
-        throughputConv = F.relu(self.tConv1d(inputs[:, 0:1, :]), inplace=True)
+        # throughputConv = F.relu(self.tConv1d(inputs[:, 0:1, :]), inplace=True)
+        throughputConv = F.relu(self.tConv1d(throughput), inplace=True)
         # 过去10个chunk的下载时刻playtime 1x10
-        playtimeConv = F.relu(self.pConv1d(inputs[:, 1:2, :]), inplace=True)
+        # playtimeConv = F.relu(self.pConv1d(inputs[:, 1:2, :]), inplace=True)
+        playtimeConv = F.relu(self.pConv1d(playtime), inplace=True)
         # 5个视频未来10个chunk的3级video_size 15x10
-        video_sizeConv = F.relu(self.vConv1d(inputs[:, 2:17, :]), inplace=True)
+        # video_sizeConv = F.relu(self.vConv1d(inputs[:, 2:17, :]), inplace=True)
+        video_sizeConv = F.relu(self.vConv1d(video_size), inplace=True)
         # 5个视频未来10个chunk的conditional_retent_rate 5x10
-        ret_rateConv = F.relu(self.rConv1d(inputs[:, 17:22, :]), inplace=True)
+        # ret_rateConv = F.relu(self.rConv1d(inputs[:, 17:22, :]), inplace=True)
+        ret_rateConv = F.relu(self.rConv1d(ret_rate), inplace=True)
 
         # flatten
         throughput_flatten = throughputConv.view(throughputConv.shape[0], -1)
@@ -161,9 +173,12 @@ class CNN(nn.Module):
         # 5个视频的buffer 5x1
         # 5个视频剩余的chunk数remaining chunks 5x1
         # 5个视频上一chunk的质量等级last_level 5x1
-        buffer_flatten = inputs[:, 22:27, :].view(inputs[:, 22:27, :].shape[0], -1)
-        remain_chunks_flatten = inputs[:, 27:32, :].view(inputs[:, 27:32, :].shape[0], -1)
-        last_level_flatten = inputs[:, 32:37, :].view(inputs[:, 32:37, :].shape[0], -1)
+        # buffer_flatten = inputs[:, 220:225].view(inputs[:, 220:225].shape[0], -1)
+        # remain_chunks_flatten = inputs[:, 225:230].view(inputs[:, 225:230, :].shape[0], -1)
+        # last_level_flatten = inputs[:, 230:235].view(inputs[:, 230:235, :].shape[0], -1)
+        buffer_flatten = inputs[:, 220:225] / 1000.0
+        remain_chunks_flatten = inputs[:, 225:230] / 10.0
+        last_level_flatten = inputs[:, 230:235]
 
         merge = torch.cat([throughput_flatten, playtime_flatten, video_size_flatten, ret_rate_flatten, buffer_flatten,
                            remain_chunks_flatten, last_level_flatten], 1)

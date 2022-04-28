@@ -28,13 +28,14 @@ def train():
     env = RLEnv()
 
     # state space dimension
-    state_dim = env.observation_space.shape[0]
+    state_dim = 235
+    action_dim = 15
 
     # action space dimension
-    if has_continuous_action_space:
-        action_dim = env.action_space.shape[0]
-    else:
-        action_dim = env.action_space.n
+    # if has_continuous_action_space:
+    #     action_dim = env.action_space.shape[0]
+    # else:
+    #     action_dim = env.action_space.n
 
     ###################### logging ######################
     #### log files for multiple runs are NOT overwritten
@@ -52,7 +53,7 @@ def train():
     run_num = len(current_num_files)
 
     #### create new log file for each run
-    log_f_name = log_dir + '/DQN_' + env_name + "_log_" + str(run_num) + ".csv"
+    log_f_name = log_dir + 'DQN_' + env_name + "_log_" + str(run_num) + ".csv"
 
     print("current logging run number for " + env_name + " : ", run_num)
     print("logging at : " + log_f_name)
@@ -74,7 +75,7 @@ def train():
         print("--------------------------------------------------------------------------------------------")
         print("setting random seed to ", random_seed)
         torch.manual_seed(random_seed)
-        env.seed(random_seed)
+        # env.seed(random_seed)
         np.random.seed(random_seed)
     #####################################################
 
@@ -111,18 +112,19 @@ def train():
     while time_step <= max_training_timesteps:
         current_ep_reward = 0
         time_step += 1
-        for i in random.sample(network_list, network_batch):    # 一种网络trace下
-            for j in random.sample(user_list, user_batch):      # 一种用户trace下
+        for i in random.sample(network_list, network_batch):  # 一种网络trace下
+            for j in random.sample(user_list, user_batch):  # 一种用户trace下
                 state = env.reset(i, j)
                 done = False
                 while not done:
                     # select action
                     action = DQN_agent.choose_action(state)
                     # 更新环境，返回transition
-                    next_state, reward, done, _ = env.step(action)
+                    next_state, reward, done, flag = env.step(action)
                     # 保存transition
-                    DQN_agent.memory.push(state, action, reward, next_state, done)
-                    state = next_state # 更新下一个状态
+                    if flag:
+                        DQN_agent.memory.push(state.numpy(), action, reward, next_state.numpy(), done)
+                    state = next_state  # 更新下一个状态
                     # update DQN agent
                     DQN_agent.update()
                     current_ep_reward += reward
@@ -154,6 +156,8 @@ def train():
     print("Finished training at (GMT) : ", end_time)
     print("Total training time  : ", end_time - start_time)
     print("============================================================================================")
+
+
 
 
 if __name__ == '__main__':

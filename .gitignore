@@ -22,4 +22,3 @@ xunit-reports/
 **/.DS_Store
 .vscode/
 DQN_preTrained/
-logs/

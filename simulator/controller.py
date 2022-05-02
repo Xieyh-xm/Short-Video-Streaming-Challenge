@@ -111,8 +111,8 @@ class Environment:
             # if the current video has ended
             if actual_play_time == video_remain_time:
                 # Output: the downloaded time length, the total time length, the watch duration
-                print("\nUser stopped watching Video ", self.start_video_id, "( ", self.players[0].get_video_len(), " ms ) :")
-                print("User watched for ", self.user_models[0].get_ret_duration(), " ms, you downloaded ", self.players[0].get_chunk_counter()*VIDEO_CHUNCK_LEN, " sec.")
+                # print("\nUser stopped watching Video ", self.start_video_id, "( ", self.players[0].get_video_len(), " ms ) :")
+                # print("User watched for ", self.user_models[0].get_ret_duration(), " ms, you downloaded ", self.players[0].get_chunk_counter()*VIDEO_CHUNCK_LEN, " sec.")
 
                 # Output the qualities and smooth of this video:
                 smooth = 0
@@ -123,7 +123,7 @@ class Environment:
                     video_qualities.append(self.players[0].get_video_quality(i-1))
                     smooth += abs(VIDEO_BIT_RATE[self.players[0].get_video_quality(i)] - VIDEO_BIT_RATE[self.players[0].get_video_quality(i-1)])
                 video_qualities.append(self.players[0].get_video_quality(bitrate_cnt-1))
-                print("Your downloaded bitrates are: ", video_qualities, ", therefore your smooth penalty is: ", smooth)
+                # print("Your downloaded bitrates are: ", video_qualities, ", therefore your smooth penalty is: ", smooth)
 
                 # use watch duration as an arg for the calculation of wasted_bandwidth of this current video
                 wasted_bw += self.players[0].bandwidth_waste(self.user_models[0])
@@ -137,7 +137,7 @@ class Environment:
 
             if self.play_video_id >= self.video_num:
                 # if it has come to the end of the list
-                print("played out!")
+                # print("played out!")
                 break
 
         if buffer < 0:  # action ends because a video stuck(needs rebuffer)
@@ -172,8 +172,8 @@ class Environment:
             self.total_downloaded_len += VIDEO_CHUNCK_LEN  # sum up the total downloaded time
             if download_video_id < self.start_video_id:
                 # If the video has already been ended, we only accumulate the wastage
-                print("Extra chunk downloaded for Video ", download_video_id,
-                      " which the user already finished watching.\n")
+                # print("Extra chunk downloaded for Video ", download_video_id,
+                #       " which the user already finished watching.\n")
                 wasted += video_size  # Since its already fluently played, the download must be redundant
                 end_of_video = True
             else:

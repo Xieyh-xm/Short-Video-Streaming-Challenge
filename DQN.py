@@ -53,13 +53,19 @@ class DQN:
         self.memory = ReplayBuffer(cfg.memory_capacity)  # 经验回放
 
     def choose_action(self, state):
-        # todo: add mask
         self.frame_idx += 1
+        chunk_last = state[0, 225:230]
+        mask = np.zeros(15)
+        for i in range(5):
+            for j in range(3):
+                if chunk_last[i] != 0.0:
+                    mask[i * 3 + j] = 1
         if random.random() > self.epsilon(self.frame_idx):
             with torch.no_grad():
                 # state = torch.tensor([state], device=self.device, dtype=torch.float32)
                 # state = torch.tensor(state, device=self.device, dtype=torch.float32)
                 q_values = self.policy_net(state)
+                q_values[0][mask == 0] = -float("inf")
                 action = q_values.max(1)[1].item()  # 选择Q值最大的动作
         else:
             action = random.randrange(self.action_dim)
@@ -79,8 +85,18 @@ class DQN:
         done_batch = torch.tensor(np.float32(done_batch), device=self.device)
 
         q_values = self.policy_net(state_batch).gather(dim=1, index=action_batch)  # 计算当前状态(s_t,a)对应的Q(s_t, a)
-        next_q_values = self.target_net(next_state_batch).max(1)[0].detach()  # 计算下一时刻的状态(s_t_,a)对应的Q值
-
+        # next_q_values = self.target_net(next_state_batch).max(1)[0].detach()  # 计算下一时刻的状态(s_t_,a)对应的Q值
+        next_q_values = self.target_net(next_state_batch)
+        chunk_last = state_batch[:].numpy()
+        chunk_last = chunk_last[:, 225:230]
+        for i in range(len(state_batch)):
+            mask = np.zeros(15)
+            for j in range(5):
+                for k in range(3):
+                    if chunk_last[i][j] != 0.0:
+                        mask[j * 3 + k] = 1
+            next_q_values[i][mask == 0] = -999999
+        next_q_values = next_q_values.max(1)[0].detach()
         # 计算期望的Q值，对于终止状态，此时done_batch[0]=1, 对应的expected_q_value等于reward
         expect_q_values = reward_batch + self.gamma * next_q_values * (1 - done_batch)
         loss = nn.MSELoss()(q_values, expect_q_values.unsqueeze(1))
@@ -125,17 +141,19 @@ class CNN(nn.Module):
         '''
         super(CNN, self).__init__()
         # Conv1d
-        self.layer1_shape = 128  # conv1d的输出通道个数
-        self.numFcInput = (4 * 8) * self.layer1_shape + 15
+        self.layer1_shape_1 = 4  # conv1d的输出通道个数
+        self.layer1_shape_2 = 8
+        self.numFcInput = (2 * 8) * self.layer1_shape_1 + (2 * 8) * self.layer1_shape_2 + 15
         self.layer2_shape = 128
         # 过去10个chunk的吞吐量throughput 1x10
-        self.tConv1d = nn.Conv1d(1, self.layer1_shape, 3)  # 输入通道=1
+        self.tConv1d = nn.Conv1d(1, self.layer1_shape_1, 3)  # 输入通道=1
         # 过去10个chunk的下载时刻playtime 1x10
-        self.pConv1d = nn.Conv1d(1, self.layer1_shape, 3)
+        self.pConv1d = nn.Conv1d(1, self.layer1_shape_1, 3)
         # 5个视频未来10个chunk的3级video_size 15x10
-        self.vConv1d = nn.Conv1d(15, self.layer1_shape, 3)
+        # self.vConv1d = nn.Conv1d(15, self.layer1_shape_2, 3)
+        self.vConv1d = nn.Conv1d(5, self.layer1_shape_2, 3)
         # 5个视频未来10个chunk的conditional_retent_rate 5x10
-        self.rConv1d = nn.Conv1d(5, self.layer1_shape, 3)
+        self.rConv1d = nn.Conv1d(5, self.layer1_shape_2, 3)
 
         # 5个视频的buffer 5x1 (直接输入全连接)
         # 5个视频剩余的chunk数remain chunks 5x1 (直接输入全连接)
@@ -149,7 +167,8 @@ class CNN(nn.Module):
         # todo:调整state的维度
         throughput = inputs[:, 0:10].unsqueeze(1) / 1000000.0
         playtime = inputs[:, 10:20].unsqueeze(1) / 1000.0
-        video_size = torch.reshape(inputs[:, 20:170], (inputs[:, 20:170].shape[0], 15, 10)) / 1000000.0
+        video_size = torch.reshape(inputs[:, 20:170], (inputs[:, 20:170].shape[0], 15, 10)) / 10000.0
+        video_size = video_size[:, [0, 3, 6, 9, 12]]
         ret_rate = torch.reshape(inputs[:, 170:220], (inputs[:, 170:220].shape[0], 5, 10))
 
         # 过去10个chunk的吞吐量throughput 1x10

@@ -18,7 +18,7 @@ def train():
     print("============================================================================================")
     has_continuous_action_space = False  # continuous action space; else discrete
     max_training_timesteps = int(3e6)  # break training loop if timeteps > max_training_timesteps
-    save_model_freq = 100  # save model frequency (in num timesteps)
+    save_model_freq = 10  # save model frequency (in num timesteps)
     random_seed = 4
 
     #####################################################
@@ -70,7 +70,7 @@ def train():
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    checkpoint_path = directory + "DQN_{}_{}_{}.pth".format(env_name, random_seed, run_num_pretrained)
+    checkpoint_path = directory
     if random_seed:
         print("--------------------------------------------------------------------------------------------")
         print("setting random seed to ", random_seed)
@@ -86,6 +86,7 @@ def train():
     # initialize a DQN agent
     cfg = Config()
     DQN_agent = DQN(state_dim, action_dim, cfg)
+    # DQN_agent.load(checkpoint_path)
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
@@ -112,8 +113,11 @@ def train():
     while time_step <= max_training_timesteps:
         current_ep_reward = 0
         time_step += 1
+        count = 0
         for i in random.sample(network_list, network_batch):  # 一种网络trace下
             for j in random.sample(user_list, user_batch):  # 一种用户trace下
+                count += 1
+                # print('trace id =' + str(i) + ' user id =' + str(j) + ' count = ' + str(count))
                 state = env.reset(i, j)
                 done = False
                 while not done:
@@ -122,15 +126,18 @@ def train():
                     # 更新环境，返回transition
                     next_state, reward, done, flag = env.step(action)
                     # 保存transition
-                    if flag:
-                        DQN_agent.memory.push(state.numpy(), action, reward, next_state.numpy(), done)
+                    # if not flag:
+                    #     reward = -999999.0
+                    #     DQN_agent.memory.push(state.numpy(), action, reward, next_state.numpy(), done)
+                    DQN_agent.memory.push(state.numpy(), action, reward, next_state.numpy(), done)
                     state = next_state  # 更新下一个状态
                     # update DQN agent
                     DQN_agent.update()
                     current_ep_reward += reward
-        if (i_episode + 1) % cfg.target_update == 0:  # update target_network
-            DQN_agent.target_net.load_state_dict(DQN_agent.policy_net.state_dict())
-        print_running_reward += (current_ep_reward / network_batch * user_batch)
+        # if (i_episode + 1) % cfg.target_update == 0:  # update target_network
+        #     DQN_agent.target_net.load_state_dict(DQN_agent.policy_net.state_dict())
+        DQN_agent.target_net.load_state_dict(DQN_agent.policy_net.state_dict())
+        print_running_reward += (current_ep_reward / network_batch / user_batch)
 
         print("Episode : {} \t\t Timestep : {} \t\t Average Reward : {}".format(i_episode, time_step,
                                                                                 print_running_reward))
@@ -156,8 +163,6 @@ def train():
     print("Finished training at (GMT) : ", end_time)
     print("Total training time  : ", end_time - start_time)
     print("============================================================================================")
-
-
 
 
 if __name__ == '__main__':

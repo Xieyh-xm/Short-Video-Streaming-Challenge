@@ -28,8 +28,8 @@ class Config:
         self.epsilon_start = 0.90
         self.epsilon_end = 0.01
         self.epsilon_decay = 500
-        self.lr = 0.0001
-        self.memory_capacity = 500
+        self.lr = 0.001
+        self.memory_capacity = 100
         self.batch_size = 64
         self.target_update = 4
         ################################################################################

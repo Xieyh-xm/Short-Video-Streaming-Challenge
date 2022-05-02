@@ -49,7 +49,8 @@ class DQN:
         # copy
         for target_param, param in zip(self.target_net.parameters(), self.policy_net.parameters()):
             target_param.data.copy_(param.data)
-        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=cfg.lr)
+        # self.optimizer = optim.Adam(self.policy_net.parameters(), lr=cfg.lr)
+        self.optimizer = optim.SGD(self.policy_net.parameters(), lr=cfg.lr)
         self.memory = ReplayBuffer(cfg.memory_capacity)  # 经验回放
 
     def choose_action(self, state):
@@ -164,10 +165,9 @@ class CNN(nn.Module):
         self.p_output = nn.Linear(self.layer2_shape, action_dim)
 
     def forward(self, inputs):
-        # todo:调整state的维度
-        throughput = inputs[:, 0:10].unsqueeze(1) / 1000000.0
-        playtime = inputs[:, 10:20].unsqueeze(1) / 1000.0
-        video_size = torch.reshape(inputs[:, 20:170], (inputs[:, 20:170].shape[0], 15, 10)) / 10000.0
+        throughput = inputs[:, 0:10].unsqueeze(1)
+        playtime = inputs[:, 10:20].unsqueeze(1)
+        video_size = torch.reshape(inputs[:, 20:170], (inputs[:, 20:170].shape[0], 15, 10))
         video_size = video_size[:, [0, 3, 6, 9, 12]]
         ret_rate = torch.reshape(inputs[:, 170:220], (inputs[:, 170:220].shape[0], 5, 10))
 

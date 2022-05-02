@@ -48,6 +48,7 @@ class RLEnv:
                                        self.seeds)
         self.action_space = spaces.Discrete(15)
         self.observation_space = spaces.Discrete(235)
+        self.idx = 0
         # self.observation_space = spaces.Box(
         #     low=np.zeros((STATE_DIMENSION, HISTORY_LENGTH)),
         #     high=np.ones((STATE_DIMENSION, HISTORY_LENGTH)),
@@ -72,6 +73,8 @@ class RLEnv:
 
     def reset(self, trace_id, user_sample_id):
         # todo:reset
+        self.idx += 1
+        self.seeds = np.random.randint(self.idx, size=(7, 2))
         self.net_env = env.Environment(user_sample_id, self.all_cooked_time[trace_id],
                                        self.all_cooked_bw[trace_id], ALL_VIDEO_NUM,
                                        self.seeds)
@@ -192,18 +195,18 @@ class RLEnv:
         if play_video_id > self.last_play_video_id and play_video_id < ALL_VIDEO_NUM:
             jump_number = play_video_id - self.last_play_video_id  # 一次跳转的视频个数
             self.offset += jump_number
-            print_debug('当前视频播放id从' + str(self.last_play_video_id) + '跳转到' + str(play_video_id) + '跳转了' + str(
-                play_video_id - self.last_play_video_id) + '个视频')
-            print_debug('download_video_id=' + str(download_video_id) + 'offset=' + str(self.offset) + '剩余下载块' + str(
-                self.net_env.players[
-                    download_video_id - self.offset].get_remain_video_num()) + 'player_id = ' + str(play_video_id))
+            # print_debug('当前视频播放id从' + str(self.last_play_video_id) + '跳转到' + str(play_video_id) + '跳转了' + str(
+            #     play_video_id - self.last_play_video_id) + '个视频')
+            # print_debug('download_video_id=' + str(download_video_id) + 'offset=' + str(self.offset) + '剩余下载块' + str(
+            #     self.net_env.players[
+            #         download_video_id - self.offset].get_remain_video_num()) + 'player_id = ' + str(play_video_id))
             # 检查player长度
             player_length = len(self.net_env.players)
 
             # 3.1 更新future_videosize
             if player_length == 5:  # 如果推荐列表为满，正常读取
                 for i in range(jump_number):
-                    del self.future_videosize[i]
+                    del self.future_videosize[0]
                 #     读取最新推荐视频的video size
                 for i in range(jump_number):
                     size_buffer = [[0 for t in range(10)] for k in range(3)]
@@ -216,7 +219,7 @@ class RLEnv:
                     self.future_videosize.append(size_buffer)
             else:  # 推荐列表不足5个，新读入的videosize为0
                 for i in range(jump_number):  # 删除无用视频
-                    del self.future_videosize[i]
+                    del self.future_videosize[0]
                     # 新数据为0
                     for i in range(jump_number):
                         size_buffer = [[0 for t in range(10)] for k in range(3)]
@@ -226,7 +229,7 @@ class RLEnv:
             chunk_remain = self.net_env.players[play_video_id - self.offset].get_remain_video_num()  # 获取剩余块
             playing_chunk = math.ceil(self.net_env.players[play_video_id - self.offset].get_play_chunk())
             for i in range(jump_number):  # 删除无用留存率
-                del self.conditional_retent_rate[i]
+                del self.conditional_retent_rate[0]
             if chunk_remain >= 10:
                 for i in range(10):
                     # print(self.conditional_retent_rate[play_video_id - self.offset][i])
@@ -267,7 +270,7 @@ class RLEnv:
             # 5.1 更新缓冲大小
             if player_length == 5:  # 如果推荐列表为满，正常读取
                 for i in range(jump_number):
-                    self.cache.pop(i)  # 先删除失效cache
+                    self.cache.pop(0)  # 先删除失效cache
                     self.cache.append(0)
                 self.cache[play_video_id - self.offset] = rebuf  #
                 if download_video_id - self.offset >= 0:  #
@@ -276,13 +279,13 @@ class RLEnv:
             else:  # 如果列表不满5个
                 if download_video_id - self.offset < 0:  # 说明下载视频已被划走，不更新下载缓冲，只更新播放缓冲
                     for i in range(jump_number):
-                        self.cache.pop(i)  # 先删除失效cache
+                        self.cache.pop(0)  # 先删除失效cache
                         self.cache.append(0)
                     self.cache[play_video_id - self.offset] = rebuf
                     print_debug('不满5个且发生滑动的cacha = ' + str(self.cache))
                 else:  # 没被划走
                     for i in range(jump_number):
-                        self.cache.pop(i)  # 先删除失效cache
+                        self.cache.pop(0)  # 先删除失效cache
                         self.cache.append(0)
                     self.cache[play_video_id - self.offset] = rebuf
                     self.cache[download_video_id - self.offset] = self.net_env.players[
@@ -292,19 +295,19 @@ class RLEnv:
             if player_length == 5:  # 如果推荐列表为满，正常读取
                 if download_video_id - self.offset < 0:  # 如果下载视频已经被划走
                     for i in range(jump_number):  # 则更新新推荐列表的视频
-                        self.left_chunk_cnt.pop(i)
+                        self.left_chunk_cnt.pop(0)
                         self.left_chunk_cnt.append(self.net_env.players[-jump_number + i].get_remain_video_num())
 
 
                 else:  # 如果下载视频未被划走，则需要更新下载视频和新读取视频
                     for i in range(jump_number):  # 读取新块数
-                        self.left_chunk_cnt.pop(i)
+                        self.left_chunk_cnt.pop(0)
                         self.left_chunk_cnt.append(self.net_env.players[-jump_number + i].get_remain_video_num())
                     self.left_chunk_cnt[download_video_id - self.offset] = self.net_env.players[
                         download_video_id - self.offset].get_remain_video_num()
             else:  # 如果推荐列表不满
                 for i in range(jump_number):  # 补0
-                    self.left_chunk_cnt.pop(i)
+                    self.left_chunk_cnt.pop(0)
                     self.left_chunk_cnt.append(0)
                 # 更新下载块的剩余chunk数
                 if download_video_id - self.offset < 0:  # 说明下载视频已被划走，无用
@@ -315,7 +318,7 @@ class RLEnv:
             print_debug(self.left_chunk_cnt)
             # 7.1 更新上个质量等级
             for i in range(jump_number):
-                self.last_5_bitrate.pop(i)
+                self.last_5_bitrate.pop(0)
                 self.last_5_bitrate.append(0)
             if download_video_id - self.offset >= 0:
                 self.last_5_bitrate[download_video_id - self.offset] = bit_rate
@@ -406,17 +409,11 @@ class RLEnv:
         mergelist = self.past_10_throughput + self.past_10_delay + mergelist1 + mergelist2 + self.cache + self.left_chunk_cnt + self.last_5_bitrate
         for i in range(235):
             self.state[0][i] = float(mergelist[i])
-        for i in range(235):
-            if i in range(0, 10):
-                self.state[0, i] = self.state[0, i] / 1000000
-            if i in range(10, 20):
-                self.state[0, i] = self.state[0, i] / 1000
-            if i in range(20, 170):
-                self.state[0, i] = self.state[0, i] / 1000000
-            if i in range(220, 225):
-                self.state[0, i] = self.state[0, i] / 1000
-            if i in range(225, 230):
-                self.state[0, i] = self.state[0, i] / 10
+        self.state[0: 10] = self.state[0: 10] / 1000000
+        self.state[10:20] = self.state[10:20] / 1000
+        self.state[20:170] = self.state[20:170] / 1000000
+        self.state[220:225] = self.state[220:225] / 1000
+        self.state[225:230] = self.state[225:230] / 10
         # return delay, rebuf, video_size, end_of_video, play_video_id, waste_bytes
 
         return self.state, one_step_QOE, done, flag

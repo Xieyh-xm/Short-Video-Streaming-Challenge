@@ -20,7 +20,6 @@ coverage-reports/
 xunit-reports/
 
 **/.DS_Store
-.idea
 .vscode/
 DQN_preTrained/
 logs/

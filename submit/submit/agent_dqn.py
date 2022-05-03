@@ -91,9 +91,9 @@ class DQN:
         self.optimizer.step()
 
     def save(self, path):
-        torch.save(self.target_net.state_dict(), path + 'dqn_checkpoint-128.pth')
+        torch.save(self.target_net.state_dict(), path + 'dqn_checkpoint-v1.0.pth')
 
     def load(self, path):
-        self.target_net.load_state_dict(torch.load(path + 'dqn_checkpoint-128.pth'))
+        self.target_net.load_state_dict(torch.load(path + 'dqn_checkpoint-v1.0.pth'))
         for target_param, param in zip(self.target_net.parameters(), self.policy_net.parameters()):
             param.data.copy_(target_param.data)

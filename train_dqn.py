@@ -18,7 +18,7 @@ def train():
     print("============================================================================================")
     has_continuous_action_space = False  # continuous action space; else discrete
     max_training_timesteps = int(3e6)  # break training loop if timeteps > max_training_timesteps
-    save_model_freq = 10  # save model frequency (in num timesteps)
+    save_model_freq = 5  # save model frequency (in num timesteps)
     random_seed = 4
 
     #####################################################
@@ -88,7 +88,7 @@ def train():
     # initialize a DQN agent
     cfg = Config()
     DQN_agent = DQN(state_dim, action_dim, cfg)
-    # DQN_agent.load(checkpoint_path)
+    DQN_agent.load(checkpoint_path)
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
@@ -138,7 +138,6 @@ def train():
                     # update DQN agent
                     DQN_agent.update()
                     current_ep_reward += reward
-                # if (idx + 1) % cfg.target_update == 0:
                 DQN_agent.target_net.load_state_dict(DQN_agent.policy_net.state_dict())
                 idx += 1
         # if (i_episode + 1) % cfg.target_update == 0:  # update target_network

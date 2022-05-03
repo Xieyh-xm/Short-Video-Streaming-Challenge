@@ -51,18 +51,25 @@ class DQN:
         # copy
         for target_param, param in zip(self.target_net.parameters(), self.policy_net.parameters()):
             target_param.data.copy_(param.data)
-        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=cfg.lr)
-        # self.optimizer = optim.SGD(self.policy_net.parameters(), lr=cfg.lr)
+        # self.optimizer = optim.Adam(self.policy_net.parameters(), lr=cfg.lr)
+        self.optimizer = optim.SGD(self.policy_net.parameters(), lr=cfg.lr)
         self.memory = ReplayBuffer(cfg.memory_capacity)  # 经验回放
 
     def choose_action(self, state):
         self.frame_idx += 1
         chunk_last = state[0, 25:30]
+        buffer = state[:, 20]
         mask = np.zeros(15)
-        for i in range(5):
-            for j in range(3):
-                if chunk_last[i] != 0.0:
-                    mask[i * 3 + j] = 1
+        # add mask
+        mask = np.zeros(15)
+        if buffer.item() < 1:
+            for i in range(3):
+                mask[i] = 1
+        else:
+            for i in range(5):
+                for j in range(3):
+                    if chunk_last[i] != 0.0:
+                        mask[i * 3 + j] = 1
         if random.random() > self.epsilon(self.frame_idx):
             with torch.no_grad():
                 # state = torch.tensor([state], device=self.device, dtype=torch.float32)
@@ -94,14 +101,21 @@ class DQN:
         # next_q_values = self.target_net(next_state_batch).max(1)[0].detach()  # 计算下一时刻的状态(s_t_,a)对应的Q值
         next_q_values = self.target_net(next_state_batch)
 
-        chunk_last = state_batch[:].numpy()
-        chunk_last = chunk_last[:, 25:30]
+        state_cur = state_batch[:].numpy()
+        chunk_last = state_cur[:, 25:30]
+        buffer = state_cur[:, 20]
         for i in range(len(state_batch)):
+            # add mask
             mask = np.zeros(15)
-            for j in range(5):
+            if buffer[i].item() < 1:
                 for k in range(3):
-                    if chunk_last[i][j] != 0.0:
-                        mask[j * 3 + k] = 1
+                    mask[k] = 1
+            else:
+                for j in range(5):
+                    for k in range(3):
+                        if chunk_last[i][j] != 0.0:
+                            mask[j * 3 + k] = 1
+            # update q_values
             for z in range(15):
                 if mask[z] == 0:
                     next_q_values[i][z] = -999999
@@ -119,10 +133,10 @@ class DQN:
         self.optimizer.step()
 
     def save(self, path):
-        torch.save(self.target_net.state_dict(), path + 'dqn_checkpoint-128.pth')
+        torch.save(self.target_net.state_dict(), path + 'dqn_checkpoint-v1.3.pth')
 
     def load(self, path):
-        self.target_net.load_state_dict(torch.load(path + 'dqn_checkpoint-128.pth'))
+        self.target_net.load_state_dict(torch.load(path + 'dqn_checkpoint-v1.2.pth'))
         for target_param, param in zip(self.target_net.parameters(), self.policy_net.parameters()):
             param.data.copy_(target_param.data)
 

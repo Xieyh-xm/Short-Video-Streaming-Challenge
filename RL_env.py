@@ -416,7 +416,7 @@ class RLEnv:
             current_chunk = self.net_env.players[0].get_play_chunk()
             # print(current_chunk)
             current_bitrate = self.net_env.players[0].get_video_quality(max(int(current_chunk - 1e-10), 0))
-        one_step_QOE = alpha * quality / 1000. - beta * rebuf / 1000. - gamma * smooth / 1000.
+        one_step_QOE = alpha * quality / 1000. - beta * rebuf / 1000. - gamma * smooth / 1000. - theta * video_size * 8 / 1000000.
 
         if play_video_id >= ALL_VIDEO_NUM:  # 全部播放完为done
             # print('结束了')

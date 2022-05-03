@@ -28,9 +28,9 @@ class Config:
         self.epsilon_start = 0.90
         self.epsilon_end = 0.01
         self.epsilon_decay = 500
-        self.lr = 0.001
-        self.memory_capacity = 5000
-        self.batch_size = 1024
+        self.lr = 0.00001
+        self.memory_capacity = 16
+        self.batch_size = 16
         self.target_update = 2
         ################################################################################
         self.result_path = curr_path + "/outputs/" + curr_time + '/results/'  # 保存结果的路径

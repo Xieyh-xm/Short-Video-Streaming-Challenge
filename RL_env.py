@@ -34,6 +34,8 @@ PRINT_FLAG = False
 class RLEnv:
     def __init__(self):
         self.state = torch.zeros(STATE_DIMENSION, HISTORY_LENGTH)
+        # self.newstate = torch.zeros(1, 55)
+        self.newstate = torch.zeros(1, 35)
         self.all_cooked_time = []
         self.all_cooked_bw = []
         net_trace_dict = './data/network_traces/medium/'
@@ -48,7 +50,6 @@ class RLEnv:
                                        self.seeds)
         self.action_space = spaces.Discrete(15)
         self.observation_space = spaces.Discrete(235)
-        self.idx = 0
         # self.observation_space = spaces.Box(
         #     low=np.zeros((STATE_DIMENSION, HISTORY_LENGTH)),
         #     high=np.ones((STATE_DIMENSION, HISTORY_LENGTH)),
@@ -72,10 +73,11 @@ class RLEnv:
         self.offset = 0  # 视频偏移量
 
     def reset(self, trace_id, user_sample_id):
+
         # todo:reset
-        self.idx += 1
-        self.seeds = np.random.randint(self.idx, size=(7, 2))
-        self.net_env = env.Environment(user_sample_id, self.all_cooked_time[trace_id],
+        print_debug('用户id = ', user_sample_id)
+        self.seeds = np.random.randint(user_sample_id + 1, size=(7, 2))
+        self.net_env = env.Environment(user_sample_id + 1, self.all_cooked_time[trace_id],
                                        self.all_cooked_bw[trace_id], ALL_VIDEO_NUM,
                                        self.seeds)
         # state 状态数组
@@ -86,8 +88,9 @@ class RLEnv:
         self.last_play_chunk_idx = -1
         self.last_residual_time = 0
         # 填充state
-        self.past_10_throughput = [0 for i in range(10)]
-        self.past_10_delay = [0 for i in range(10)]
+        # todo:init
+        self.past_10_throughput = [100000 for i in range(10)]
+        self.past_10_delay = [100 for i in range(10)]
         self.cache = [0 for i in range(5)]
         self.last_5_bitrate = [0 for i in range(5)]
         self.future_videosize = [[[0 for t in range(10)] for i in range(3)] for k in range(5)]
@@ -96,6 +99,8 @@ class RLEnv:
         self.left_chunk_cnt = [0 for i in range(5)]
         self.offset = 0
         self.state = torch.zeros(STATE_DIMENSION, HISTORY_LENGTH)
+        # self.newstate = torch.zeros(1, 55)
+        self.newstate = torch.zeros(1, 35)
         # self.past_10_throughput = numpy.zeros(10)
         # self.past_10_delay = numpy.zeros(10)
         # self.cache = numpy.zeros(5)
@@ -125,7 +130,29 @@ class RLEnv:
         for i in range(235):
             self.state[0][i] = mergelist[i]
 
-        return self.state
+        self.state[:, 0: 10] = self.state[:, 0: 10] / 100000
+        self.state[:, 10:20] = self.state[:, 10:20] / 100
+        self.state[:, 20:170] = self.state[:, 20:170] / 100000
+        self.state[:, 220:225] = self.state[:, 220:225] / 1000
+        self.state[:, 225:230] = self.state[:, 225:230] / 10
+
+        # for i in range(55):
+        #     if i in range(0, 20):
+        #         self.newstate[0, i] = self.state[0, i]
+        #     if i in range(20, 40):
+        #         self.newstate[0, i] = self.state[0, (i - 20) * 10 + 20]
+        #     if i in range(40, 55):
+        #         self.newstate[0, i] = self.state[0, i - 40 + 220]
+
+        self.newstate[:, 0:5] = self.state[:, 0:5]
+        self.newstate[:, 5:10] = self.state[:, 10:15]
+        index = torch.tensor([20, 50, 80, 110, 140])
+        self.newstate[:, 10:15] = self.state[:, index.long()]
+        index = torch.tensor([170, 180, 190, 200, 210])
+        self.newstate[:, 15:20] = self.state[:, index.long()]
+        self.newstate[:, 20:35] = self.state[:, 220:235]
+
+        return self.newstate
 
     def step(self, action):
         print_debug("============================================================================================")
@@ -151,14 +178,12 @@ class RLEnv:
         print_debug('修正前下载视频id = ' + str(download_video_id))
         download_video_id += self.offset
         print_debug('修正后下载视频id = ' + str(download_video_id))
-
         done = False
         jump_number = 0
         if sleep_time > 0:
             sleep_flag = True
         if sleep_time == 0:
             # the last chunk id that user watched
-
             max_watch_chunk_id = self.net_env.user_models[
                 download_video_id - self.net_env.get_start_video_id()].get_watch_chunk_cnt()
             # last downloaded chunk id
@@ -214,8 +239,8 @@ class RLEnv:
                     length = min(10, len(self.net_env.players[-jump_number + i].video_size[0]))
                     for j in range(length):
                         size_buffer[0][j] = self.net_env.players[-jump_number + i].video_size[0][j]
-                        size_buffer[1][j] = self.net_env.players[-jump_number + i].video_size[0][j]
-                        size_buffer[2][j] = self.net_env.players[-jump_number + i].video_size[0][j]
+                        size_buffer[1][j] = self.net_env.players[-jump_number + i].video_size[1][j]
+                        size_buffer[2][j] = self.net_env.players[-jump_number + i].video_size[2][j]
                     self.future_videosize.append(size_buffer)
             else:  # 推荐列表不足5个，新读入的videosize为0
                 for i in range(jump_number):  # 删除无用视频
@@ -224,6 +249,19 @@ class RLEnv:
                     for i in range(jump_number):
                         size_buffer = [[0 for t in range(10)] for k in range(3)]
                         self.future_videosize.append(size_buffer)
+            # 更新当前下载视频的未来10个size
+            if download_video_id - self.offset >= 0:  # 下载的视频未被划走
+                chunk_remain = self.net_env.players[download_video_id - self.offset].get_remain_video_num()  # 获取剩余块
+                if chunk_remain < 10:  # 不足10块补0
+                    for k in range(3):
+                        self.future_videosize[download_video_id - self.offset][k].pop(0)
+                        self.future_videosize[download_video_id - self.offset][k].append(0)
+                if chunk_remain >= 10:
+                    for k in range(3):
+                        self.future_videosize[download_video_id - self.offset][k].pop(0)
+                        self.future_videosize[download_video_id - self.offset][k].append(
+                            self.net_env.players[download_video_id - self.offset].video_size[k][9 - chunk_remain])
+
             # 4.1 更新条件概率
             # 更新正在播放视频的条件概率
             chunk_remain = self.net_env.players[play_video_id - self.offset].get_remain_video_num()  # 获取剩余块
@@ -268,28 +306,20 @@ class RLEnv:
                     self.conditional_retent_rate.append(conditional_retent_rate_buffer)
 
             # 5.1 更新缓冲大小
-            if player_length == 5:  # 如果推荐列表为满，正常读取
+            for i in range(jump_number):
+                self.cache.pop(0)  # 先删除失效cache
+                self.cache.append(0)
+            self.cache[play_video_id - self.offset] = rebuf  #
+            if download_video_id - self.offset >= 0 and play_video_id != download_video_id:  # 只有download不等于下载id时才更新 ,且满足如果下载视频未被划走
+                self.cache[download_video_id - self.offset] = self.net_env.players[
+                    download_video_id - self.offset].buffer_size  # 更新下载视频的buff
+
+            if download_video_id - self.offset < 0:  # 说明下载视频已被划走，不更新下载缓冲，只更新播放缓冲
                 for i in range(jump_number):
-                    self.cache.pop(0)  # 先删除失效cache
+                    self.cache.pop(i)  # 先删除失效cache
                     self.cache.append(0)
-                self.cache[play_video_id - self.offset] = rebuf  #
-                if download_video_id - self.offset >= 0:  #
-                    self.cache[download_video_id - self.offset] = self.net_env.players[
-                        download_video_id - self.offset].buffer_size  # 更新下载视频的buff
-            else:  # 如果列表不满5个
-                if download_video_id - self.offset < 0:  # 说明下载视频已被划走，不更新下载缓冲，只更新播放缓冲
-                    for i in range(jump_number):
-                        self.cache.pop(0)  # 先删除失效cache
-                        self.cache.append(0)
-                    self.cache[play_video_id - self.offset] = rebuf
-                    print_debug('不满5个且发生滑动的cacha = ' + str(self.cache))
-                else:  # 没被划走
-                    for i in range(jump_number):
-                        self.cache.pop(0)  # 先删除失效cache
-                        self.cache.append(0)
-                    self.cache[play_video_id - self.offset] = rebuf
-                    self.cache[download_video_id - self.offset] = self.net_env.players[
-                        download_video_id - self.offset].buffer_size  # 更新下载视频的buff
+                self.cache[play_video_id - self.offset] = rebuf
+                print_debug('不满5个且发生滑动的cacha = ' + str(self.cache))
 
             # 6.1 更新剩余chunk数
             if player_length == 5:  # 如果推荐列表为满，正常读取
@@ -370,8 +400,9 @@ class RLEnv:
             # 先更新播放部分
             self.cache[play_video_id - self.offset] = rebuf
             # 再更新下载部分
-            self.cache[download_video_id - self.offset] = self.net_env.players[
-                download_video_id - self.offset].buffer_size
+            if play_video_id != download_video_id:  # 只有download不等于下载id时才更新
+                self.cache[download_video_id - self.offset] = self.net_env.players[
+                    download_video_id - self.offset].buffer_size
             # 6.2 不切换情况下更新剩余chunk数
             self.left_chunk_cnt[download_video_id - self.offset] = self.net_env.players[
                 download_video_id - self.offset].get_remain_video_num()
@@ -409,11 +440,27 @@ class RLEnv:
         mergelist = self.past_10_throughput + self.past_10_delay + mergelist1 + mergelist2 + self.cache + self.left_chunk_cnt + self.last_5_bitrate
         for i in range(235):
             self.state[0][i] = float(mergelist[i])
-        self.state[0: 10] = self.state[0: 10] / 1000000
-        self.state[10:20] = self.state[10:20] / 1000
-        self.state[20:170] = self.state[20:170] / 1000000
-        self.state[220:225] = self.state[220:225] / 1000
-        self.state[225:230] = self.state[225:230] / 10
-        # return delay, rebuf, video_size, end_of_video, play_video_id, waste_bytes
 
-        return self.state, one_step_QOE, done, flag
+        self.state[:, 0: 10] = self.state[:, 0: 10] / 100000
+        self.state[:, 10:20] = self.state[:, 10:20] / 100
+        self.state[:, 20:170] = self.state[:, 20:170] / 100000
+        self.state[:, 220:225] = self.state[:, 220:225] / 1000
+        self.state[:, 225:230] = self.state[:, 225:230] / 10
+
+        # for i in range(55):
+        #     if i in range(0, 20):
+        #         self.newstate[0, i] = self.state[0, i]
+        #     if i in range(20, 40):
+        #         self.newstate[0, i] = self.state[0, (i - 20) * 10 + 20]
+        #     if i in range(40, 55):
+        #         self.newstate[0, i] = self.state[0, i - 40 + 220]
+
+        self.newstate[:, 0:5] = self.state[:, 0:5]
+        self.newstate[:, 5:10] = self.state[:, 10:15]
+        index = torch.tensor([20, 50, 80, 110, 140])
+        self.newstate[:, 10:15] = self.state[:, index.long()]
+        index = torch.tensor([170, 180, 190, 200, 210])
+        self.newstate[:, 15:20] = self.state[:, index.long()]
+        self.newstate[:, 20:35] = self.state[:, 220:235]
+
+        return self.newstate, one_step_QOE, done, flag

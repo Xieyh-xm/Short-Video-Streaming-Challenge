@@ -28,7 +28,9 @@ def train():
     env = RLEnv()
 
     # state space dimension
-    state_dim = 235
+    # state_dim = 235
+    # state_dim = 55
+    state_dim = 35
     action_dim = 15
 
     # action space dimension
@@ -115,6 +117,7 @@ def train():
         time_step += 1
         count = 0
         for i in random.sample(network_list, network_batch):  # 一种网络trace下
+            idx = 0
             for j in random.sample(user_list, user_batch):  # 一种用户trace下
                 count += 1
                 # print('trace id =' + str(i) + ' user id =' + str(j) + ' count = ' + str(count))
@@ -123,20 +126,24 @@ def train():
                 while not done:
                     # select action
                     action = DQN_agent.choose_action(state)
+                    state_tmp = state.numpy().copy()
                     # 更新环境，返回transition
                     next_state, reward, done, flag = env.step(action)
+                    next_state_tmp = next_state.numpy().copy()
                     # 保存transition
-                    # if not flag:
-                    #     reward = -999999.0
-                    #     DQN_agent.memory.push(state.numpy(), action, reward, next_state.numpy(), done)
-                    DQN_agent.memory.push(state.numpy(), action, reward, next_state.numpy(), done)
+                    # if flag:
+                    #     reward -= 5.0
+                    DQN_agent.memory.push(state_tmp, action, reward, next_state_tmp, done)
                     state = next_state  # 更新下一个状态
                     # update DQN agent
                     DQN_agent.update()
                     current_ep_reward += reward
+                # if (idx + 1) % cfg.target_update == 0:
+                DQN_agent.target_net.load_state_dict(DQN_agent.policy_net.state_dict())
+                idx += 1
         # if (i_episode + 1) % cfg.target_update == 0:  # update target_network
         #     DQN_agent.target_net.load_state_dict(DQN_agent.policy_net.state_dict())
-        DQN_agent.target_net.load_state_dict(DQN_agent.policy_net.state_dict())
+        # DQN_agent.target_net.load_state_dict(DQN_agent.policy_net.state_dict())
         print_running_reward += (current_ep_reward / network_batch / user_batch)
 
         print("Episode : {} \t\t Timestep : {} \t\t Average Reward : {}".format(i_episode, time_step,

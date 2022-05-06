@@ -27,3 +27,4 @@ data/network_traces/mix_high
 data/network_traces/mix_medium
 data/network_traces/mix_low
 data/network_traces/mix_train
+logs/

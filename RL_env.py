@@ -38,7 +38,7 @@ class RLEnv:
         self.newstate = torch.zeros(1, 35)
         self.all_cooked_time = []
         self.all_cooked_bw = []
-        net_trace_dict = './data/network_traces/medium/'
+        net_trace_dict = './data/network_traces/mixed/'
         video_trace_dict = './data/short_video_size'
         ret_trace_dict = './data/user_ret'
         self.user_sample_id = 0
@@ -136,21 +136,12 @@ class RLEnv:
         self.state[:, 220:225] = self.state[:, 220:225] / 1000
         self.state[:, 225:230] = self.state[:, 225:230] / 10
 
-        # for i in range(55):
-        #     if i in range(0, 20):
-        #         self.newstate[0, i] = self.state[0, i]
-        #     if i in range(20, 40):
-        #         self.newstate[0, i] = self.state[0, (i - 20) * 10 + 20]
-        #     if i in range(40, 55):
-        #         self.newstate[0, i] = self.state[0, i - 40 + 220]
-
-        self.newstate[:, 0:5] = self.state[:, 0:5]
-        self.newstate[:, 5:10] = self.state[:, 10:15]
+        self.newstate[:, 0:5] = self.state[:, 5:10]
         index = torch.tensor([20, 50, 80, 110, 140])
-        self.newstate[:, 10:15] = self.state[:, index.long()]
+        self.newstate[:, 5:10] = self.state[:, index.long()]
         index = torch.tensor([170, 180, 190, 200, 210])
-        self.newstate[:, 15:20] = self.state[:, index.long()]
-        self.newstate[:, 20:35] = self.state[:, 220:235]
+        self.newstate[:, 10:15] = self.state[:, index.long()]
+        self.newstate[:, 15:30] = self.state[:, 220:235]
 
         return self.newstate
 
@@ -174,6 +165,9 @@ class RLEnv:
             download_video_id = len(self.net_env.players) - 1
         if self.net_env.players[download_video_id].get_remain_video_num() == 0:
             sleep_time = 500
+
+        # print('download_video_id = ' + str(download_video_id))
+        # print('bit_rate = ' + str(bit_rate) + '\n')
 
         print_debug('修正前下载视频id = ' + str(download_video_id))
         download_video_id += self.offset
@@ -447,20 +441,11 @@ class RLEnv:
         self.state[:, 220:225] = self.state[:, 220:225] / 1000
         self.state[:, 225:230] = self.state[:, 225:230] / 10
 
-        # for i in range(55):
-        #     if i in range(0, 20):
-        #         self.newstate[0, i] = self.state[0, i]
-        #     if i in range(20, 40):
-        #         self.newstate[0, i] = self.state[0, (i - 20) * 10 + 20]
-        #     if i in range(40, 55):
-        #         self.newstate[0, i] = self.state[0, i - 40 + 220]
-
-        self.newstate[:, 0:5] = self.state[:, 0:5]
-        self.newstate[:, 5:10] = self.state[:, 10:15]
+        self.newstate[:, 0:5] = self.state[:, 5:10]
         index = torch.tensor([20, 50, 80, 110, 140])
-        self.newstate[:, 10:15] = self.state[:, index.long()]
+        self.newstate[:, 5:10] = self.state[:, index.long()]
         index = torch.tensor([170, 180, 190, 200, 210])
-        self.newstate[:, 15:20] = self.state[:, index.long()]
-        self.newstate[:, 20:35] = self.state[:, 220:235]
+        self.newstate[:, 10:15] = self.state[:, index.long()]
+        self.newstate[:, 15:30] = self.state[:, 220:235]
 
         return self.newstate, one_step_QOE, done, flag

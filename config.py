@@ -28,10 +28,10 @@ class Config:
         self.epsilon_start = 0.90
         self.epsilon_end = 0.01
         self.epsilon_decay = 500
-        self.lr = 0.00001
-        self.memory_capacity = 16
-        self.batch_size = 16
-        self.target_update = 2
+        self.lr = 0.0001
+        self.memory_capacity = 8
+        self.batch_size = 8
+        self.target_update = 3
         ################################################################################
         self.result_path = curr_path + "/outputs/" + curr_time + '/results/'  # 保存结果的路径
         self.model_path = curr_path + "/outputs/" + curr_time + '/models/'  # 保存模型的路径

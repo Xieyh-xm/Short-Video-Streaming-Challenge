@@ -133,12 +133,14 @@ def train():
                     # 保存transition
                     # if flag:
                     #     reward -= 5.0
+                    # reward = reward / 10
                     DQN_agent.memory.push(state_tmp, action, reward, next_state_tmp, done)
                     state = next_state  # 更新下一个状态
                     # update DQN agent
                     DQN_agent.update()
                     current_ep_reward += reward
-                DQN_agent.target_net.load_state_dict(DQN_agent.policy_net.state_dict())
+                if (idx + 1) % cfg.target_update == 0:
+                    DQN_agent.target_net.load_state_dict(DQN_agent.policy_net.state_dict())
                 idx += 1
         # if (i_episode + 1) % cfg.target_update == 0:  # update target_network
         #     DQN_agent.target_net.load_state_dict(DQN_agent.policy_net.state_dict())

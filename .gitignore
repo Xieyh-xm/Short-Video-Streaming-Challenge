@@ -23,6 +23,7 @@ xunit-reports/
 .vscode/
 DQN_preTrained/
 PPO_logs/
+DQN_logs/
 data/network_traces/mix_high
 data/network_traces/mix_medium
 data/network_traces/mix_low

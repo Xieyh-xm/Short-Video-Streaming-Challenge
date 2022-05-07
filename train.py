@@ -123,7 +123,7 @@ def train():
     time_step = 0
     i_episode = 0
     network_batch = 10
-    network_dict_size = 20
+    network_dict_size = 1421
     user_batch = 15
     user_dict_size = 1000
     save_model_freq = 50  # save model frequency (in num timesteps)

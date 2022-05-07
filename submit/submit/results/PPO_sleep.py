@@ -91,8 +91,15 @@ class ActorCritic(nn.Module):
     def act(self, state):
         state_numpy = state.numpy()  # CPU
         ifsleep = False
-        chunk_last = state_numpy[0, 20:25]
-        buffer = state_numpy[0, 15:20]
+
+        # throughput取5个
+        # buffer = state_numpy[0, 15:20]
+        # chunk_last = state_numpy[0, 20:25]
+
+        # throughput取10个
+        buffer = state_numpy[0, 20:25]
+        chunk_last = state_numpy[0, 25:30]
+
         print_debug('chunk_last = ' + str(chunk_last))
         mask = np.zeros(16)
         mask[15] = 1  # 允许sleep
@@ -126,9 +133,14 @@ class ActorCritic(nn.Module):
 
     def evaluate(self, state, action):
         state_numpy = state.numpy()  # CPU
-        # chunk_last = state_numpy[:, 225:230]
-        chunk_last = state_numpy[:, 20:25]
-        buffer = state_numpy[:, 15:20]
+        # throughput取5个
+        # buffer = state_numpy[:, 15:20]
+        # chunk_last = state_numpy[:, 20:25]
+
+
+        # throughput取10个
+        buffer = state_numpy[:, 20:25]
+        chunk_last = state_numpy[:, 25:30]
 
         mask = np.zeros((state_numpy.shape[0], 16))
         for k in range(state_numpy.shape[0]):
@@ -224,7 +236,8 @@ class PPO:
             with torch.no_grad():
                 state = torch.FloatTensor(state).to(device)
                 action, action_logprob, sleep_flag = self.policy_old.act(state)
-            state_n = torch.zeros([1, 30])
+            # state_n = torch.zeros([1, 30])
+            state_n = torch.zeros([1, 35])
             state_n[0, :] = state[0, :]
             self.buffer.states.append(state_n)
             self.buffer.actions.append(action)

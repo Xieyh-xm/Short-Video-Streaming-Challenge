@@ -255,7 +255,6 @@ class PPO:
             if buffer.sum() >= 6 and buffer[0] >= 3 and throughput4next < ave_throughput:
                 action_trans[2] = (1 - throughput4next / ave_throughput) * 1000.
             return action_trans
-            # return action.item()
 
     def update(self):
         # Monte Carlo estimate of returns

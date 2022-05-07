@@ -4,8 +4,8 @@ import torch
 import math
 import itertools
 
-NN_MODEL = "/home/team/" + "ParttimeJob" + "/submit/results/PPO_3_0_650.pth"
-# NN_MODEL = "submit/submit/results/PPO_3_0_650.pth"
+# NN_MODEL = "/home/team/" + "ParttimeJob" + "/submit/results/PPO_3_0_650.pth"
+NN_MODEL = "submit/submit/results/PPO_3_0_720.pth"
 
 lr_actor = 0.0003  # learning rate for actor network
 lr_critic = 0.001  # learning rate for critic network
@@ -124,7 +124,6 @@ class Algorithm:
             self.newstate[:, 10:15] = self.state[:, index.long()]
             self.newstate[:, 15:30] = self.state[:, 220:235]
         else:
-
             # 检查player长度
             switch_flag = False
             player_length = len(Players)
@@ -407,5 +406,5 @@ class Algorithm:
         sleep_time = action[2]
         self.last_sleep_time = sleep_time
         bit_rate = int(action[1])
-        print('当前决策为下载视频', self.download_video_id, '，sleep_tiem=', sleep_time, '码率等级为',bit_rate)
+        # print('当前决策为下载视频', self.download_video_id, '，sleep_tiem=', sleep_time, '码率等级为',bit_rate)
         return self.download_video_id, bit_rate, sleep_time

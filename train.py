@@ -8,14 +8,15 @@ import numpy as np
 import gym
 
 # from RL_env import RLEnv
-from RL_env_new import RLEnv
+# from RL_env_new import RLEnv
 # from RL_env_new_sleep_pro import RLEnv
 
 # from PPO import PPO
-from PPO_new import PPO
+# from PPO_new import PPO
 
-# from PPO_new_sleep import PPO
-# from RL_env_new_sleep import RLEnv
+# 加上sleep flag
+from PPO.PPO_sleep import PPO
+from RL_env.RL_env_sleep import RLEnv
 
 
 ################################### Training ###################################
@@ -67,7 +68,7 @@ def train():
     log_dir = "PPO_logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    env_name = '3'
+    env_name = 'mix_train'
 
     log_dir = log_dir + '/' + env_name + '/'
     if not os.path.exists(log_dir):
@@ -112,20 +113,20 @@ def train():
     # initialize a PPO agent
     ppo_agent = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space,
                     action_std)
-    ppo_agent.load(directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, 660))
+    # ppo_agent.load(directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, 650))
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
     print("Started training at (GMT) : ", start_time)
 
     print("============================================================================================")
 
-    time_step = 660
+    time_step = 0
     i_episode = 0
-    network_batch = 3
+    network_batch = 10
     network_dict_size = 20
-    user_batch = 20
+    user_batch = 15
     user_dict_size = 1000
-    save_model_freq = 20  # save model frequency (in num timesteps)
+    save_model_freq = 50  # save model frequency (in num timesteps)
     # training loop
     network_list = range(network_dict_size)
     user_list = range(user_dict_size)

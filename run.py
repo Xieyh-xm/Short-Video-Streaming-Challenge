@@ -180,7 +180,7 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
         # play over all videos
         if play_video_id >= ALL_VIDEO_NUM:
             print("The user leaves.", file=log_file)
-            print("The user leaves.")
+            # print("The user leaves.")
             break
 
         # Apply the participant's algorithm to decide the args for the next step
@@ -199,13 +199,13 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
                   file=log_file)
     # Score
     S = QoE - theta * bandwidth_usage * 8 / 1000000.
-    print("Your score is: ", S)
+    # print("Your score is: ", S)
 
     # QoE
-    print("Your QoE is: ", QoE)
+    # print("Your QoE is: ", QoE)
     # wasted_bytes
-    print("Your sum of wasted bytes is: ", sum_wasted_bytes)
-    print("Your download/watch ratio (downloaded time / total watch time) is: ", net_env.get_wasted_time_ratio())
+    # print("Your sum of wasted bytes is: ", sum_wasted_bytes)
+    # print("Your download/watch ratio (downloaded time / total watch time) is: ", net_env.get_wasted_time_ratio())
 
     # end the test
     print('------------trace ', trace_id, '--------------\n\n', file=log_file)
@@ -219,16 +219,16 @@ def test_all_traces(isBaseline, isQuickstart, user_id, trace, user_sample_id):
     all_cooked_time, all_cooked_bw = short_video_load_trace.load_trace(cooked_trace_folder)
     for i in range(len(all_cooked_time)):
         # for i in range(1):
-        print('------------trace ', i, '--------------')
+        # print('------------trace ', i, '--------------')
         avg += test(isBaseline, isQuickstart, user_id, i, user_sample_id)
-        print('---------------------------------------\n\n')
+        # print('---------------------------------------\n\n')
     avg /= len(all_cooked_time)
-    print("\n\nYour average indexes under [", trace, "] network is: ")
-    print("Score: ", avg[0])
-    print("Bandwidth Usage: ", avg[1])
-    print("QoE: ", avg[2])
-    print("Sum Wasted Bytes: ", avg[3])
-    print("Wasted time ratio: ", avg[4])
+    # print("\n\nYour average indexes under [", trace, "] network is: ")
+    # print("Score: ", avg[0])
+    # print("Bandwidth Usage: ", avg[1])
+    # print("QoE: ", avg[2])
+    # print("Sum Wasted Bytes: ", avg[3])
+    # print("Wasted time ratio: ", avg[4])
     return avg
 
 
@@ -253,6 +253,10 @@ if __name__ == '__main__':
     trace = "mixed"
     # test_all_traces(False, False, './submit/submit','medium', 0)
     test_user_samples(False, False, './submit/submit', 'low', 50)
+    print('-----------------------------------')
+    test_user_samples(False, False, './submit/submit', 'medium', 50)
+    print('-----------------------------------')
+    test_user_samples(False, False, './submit/submit', 'high', 50)
     # if args.baseline == '' and args.quickstart == '':
     #     test_all_traces(False, False, args.solution, trace, 0)  # 0 means the first user sample.
     # elif args.quickstart != '':

@@ -3,8 +3,8 @@ import math
 import itertools
 from results.PPO_sleep import PPO
 
-# NN_MODEL = "/home/team/" + "ParttimeJob" + "/submit/results/PPO_3_0_650.pth"
-NN_MODEL = "submit/submit/results/PPO_4_0_200.pth"
+# NN_MODEL = "/home/team/" + "ParttimeJob" + "/submit/results/PPO_mix_train_0_350.pth"
+NN_MODEL = "submit/submit/results/PPO_mix_train_0_350.pth"
 
 lr_actor = 0.0003  # learning rate for actor network
 lr_critic = 0.001  # learning rate for critic network
@@ -17,6 +17,7 @@ action_std = 0.6
 STATE_DIMENSION = 1
 HISTORY_LENGTH = 235
 ALL_VIDEO_NUM = 7
+# ALL_VIDEO_NUM = 9
 VIDEO_BIT_RATE = [750, 1200, 1850]
 
 TAU = 250
@@ -215,8 +216,7 @@ class Algorithm:
                             self.conditional_retent_rate[0][i] = \
                                 float(Players[0].user_retent_rate[
                                           -chunk_play_remain + i - 2]) / \
-                                float(Players[0].user_retent_rate[
-                                          playing_chunk - 1])
+                                float(Players[0].user_retent_rate[max(0, playing_chunk - 1)])
                         else:
                             self.conditional_retent_rate[0][i] = 0
 

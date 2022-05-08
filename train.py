@@ -5,7 +5,7 @@ from datetime import datetime
 import random
 import torch
 import numpy as np
-import gym
+import time
 
 # from RL_env import RLEnv
 # from RL_env_new import RLEnv
@@ -68,7 +68,7 @@ def train():
     log_dir = "PPO_logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    env_name = 'mix_train'
+    env_name = '20220508'
 
     log_dir = log_dir + '/' + env_name + '/'
     if not os.path.exists(log_dir):
@@ -113,14 +113,14 @@ def train():
     # initialize a PPO agent
     ppo_agent = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space,
                     action_std)
-    # ppo_agent.load(directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, 650))
+    ppo_agent.load(directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, 100))
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
     print("Started training at (GMT) : ", start_time)
 
     print("============================================================================================")
 
-    time_step = 0
+    time_step = 100
     i_episode = 0
     network_batch = 10
     network_dict_size = 1421
@@ -143,9 +143,9 @@ def train():
         current_ep_reward = 0
         time_step += 1
         count = 0
-        random.seed(time_step)
+        ticks = time.time()
+        random.seed(ticks)
         for i in random.sample(network_list, network_batch):
-            random.seed(time_step)
             for j in random.sample(user_list, user_batch):
                 count += 1
                 state = env.reset(i, j)

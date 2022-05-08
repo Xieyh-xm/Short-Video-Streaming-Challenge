@@ -6,7 +6,7 @@ from results.PPO_sleep import PPO
 # NN_MODEL = "/home/team/" + "ParttimeJob" + "/submit/results/PPO_mix_train_0_350.pth"
 NN_MODEL = "submit/submit/results/PPO_mix_train_0_350.pth"
 
-lr_actor = 0.0003  # learning rate for actor network
+lr_actor = 0.0001  # learning rate for actor network
 lr_critic = 0.001  # learning rate for critic network
 K_epochs = 80  # update policy for K epochs in one PPO update
 eps_clip = 0.2  # clip parameter for PPO
@@ -150,7 +150,7 @@ class Algorithm:
                 pass
             else:
                 self.past_10_throughput.pop(0)
-                self.past_10_throughput.append(video_size / delay * 1000.0)
+                self.past_10_throughput.append(video_size * 8 / delay * 1000.0)
             # 2.过去的delay
             # self.past_10_delay = numpy.delete(self.past_10_delay, 0)
             # self.past_10_delay = numpy.append(self.past_10_delay, delay)
@@ -249,7 +249,10 @@ class Algorithm:
                 # 5.1 更新缓冲大小
                 for i in range(jump_number):
                     self.cache.pop(0)  # 先删除失效cache
-                    self.cache.append(0)
+                    if self.last_play_video_id + 4 + jump_number < ALL_VIDEO_NUM:
+                        self.cache.append(0)
+                    else:
+                        self.cache.append(10000)
                 if self.download_video_id - self.offset >= 0:  # 满足如果下载视频未被划走
                     if not sleep_flag:
                         self.cache[self.download_video_id - self.offset] = Players[
@@ -388,6 +391,7 @@ class Algorithm:
             sleep_time = 0
         self.last_sleep_time = sleep_time
 
-        # print('当前决策为下载视频', self.download_video_id, '，sleep_tiem=', sleep_time, '码率等级为', bit_rate, 'buffer',
-        #       self.newstate[0, 15:20])
+        print('当前播放视频id ', play_video_id, '当前决策为下载视频', self.download_video_id, '，sleep_tiem=', sleep_time, '码率等级为',
+              bit_rate, 'buffer',
+              self.newstate[0, 20:25])
         return self.download_video_id, bit_rate, sleep_time

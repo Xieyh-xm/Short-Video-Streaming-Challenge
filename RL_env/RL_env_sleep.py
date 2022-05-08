@@ -1,5 +1,7 @@
 import sys
 import itertools
+import time
+
 import numpy
 
 sys.path.append('./simulator/')
@@ -26,6 +28,8 @@ beta = 1.85
 gamma = 1
 theta = 0.5
 ALL_VIDEO_NUM = 7
+# ALL_VIDEO_NUM = 7
+
 STATE_DIMENSION = 1
 HISTORY_LENGTH = 235
 PRINT_FLAG = False
@@ -74,8 +78,9 @@ class RLEnv:
 
     def reset(self, trace_id, user_sample_id):
         print_debug('用户id = ', user_sample_id)
-        self.seeds = np.random.randint(user_sample_id + 1, size=(7, 2))
-        self.net_env = env.Environment(user_sample_id + 1, self.all_cooked_time[trace_id],
+        ticks = time.time()
+        self.seeds = np.random.randint(ticks, size=(7, 2))
+        self.net_env = env.Environment(ticks, self.all_cooked_time[trace_id],
                                        self.all_cooked_bw[trace_id], ALL_VIDEO_NUM,
                                        self.seeds)
         # state 状态数组
@@ -188,7 +193,7 @@ class RLEnv:
             pass
         else:
             self.past_10_throughput.pop(0)
-            self.past_10_throughput.append(video_size / delay * 1000.0)
+            self.past_10_throughput.append(video_size * 8 / delay * 1000.0)
         # 2.过去的delay
         if sleep_flag:
             pass
@@ -290,7 +295,11 @@ class RLEnv:
             # 5.1 更新缓冲大小
             for i in range(jump_number):
                 self.cache.pop(0)  # 先删除失效cache
-                self.cache.append(0)
+                if self.last_play_video_id + 4 + jump_number < ALL_VIDEO_NUM:
+                    self.cache.append(0)
+                else:
+                    self.cache.append(10000)
+
             if download_video_id - self.offset >= 0:  # 满足如果下载视频未被划走
                 if not sleep_flag:  # 如果不是sleep，则更新下载部分
                     self.cache[download_video_id - self.offset] = self.net_env.players[
@@ -298,10 +307,9 @@ class RLEnv:
                 self.cache[0] = self.net_env.players[
                     0].buffer_size  # 更新播放视频的buff
             if download_video_id - self.offset < 0:  # 说明下载视频已被划走，不更新下载缓冲，只更新播放缓冲
-
                 self.cache[0] = self.net_env.players[
                     0].buffer_size
-                print_debug('不满5个且发生滑动的cacha = ' + str(self.cache))
+                print_debug('不满5个且发生滑动的cache = ' + str(self.cache))
 
             # 6.1 更新剩余chunk数
             for i in range(5):

@@ -72,7 +72,6 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
         sys.path.remove('./quickstart/')
     else:  # Testing participant's algorithm
         sys.path.append(user_id)
-        # import solution as Solution
         import solution_sleep as Solution
         sys.path.remove(user_id)
         LOG_FILE = 'logs/log.txt'
@@ -217,8 +216,8 @@ def test_all_traces(isBaseline, isQuickstart, user_id, trace, user_sample_id):
     cooked_trace_folder = 'data/network_traces/' + trace + '/'
     global all_cooked_time, all_cooked_bw
     all_cooked_time, all_cooked_bw = short_video_load_trace.load_trace(cooked_trace_folder)
-    for i in range(len(all_cooked_time)):
-        # for i in range(1):
+    for i in range(1):
+        # for i in range(len(all_cooked_time)):
         # print('------------trace ', i, '--------------')
         avg += test(isBaseline, isQuickstart, user_id, i, user_sample_id)
         # print('---------------------------------------\n\n')
@@ -250,15 +249,16 @@ def test_user_samples(isBaseline, isQuickstart, user_id, trace, sample_cnt):  # 
 
 if __name__ == '__main__':
     assert args.trace in ["mixed", "high", "low", "medium"]
-    trace = "mixed"
-    # test_all_traces(False, False, './submit/submit','medium', 0)
-    test_user_samples(False, False, './submit/submit', 'low', 50)
-    print('-----------------------------------')
-    test_user_samples(False, False, './submit/submit', 'medium', 50)
-    print('-----------------------------------')
-    test_user_samples(False, False, './submit/submit', 'high', 50)
+    # test_user_samples(False, False, './submit/submit', 'low', 50)
+    # print('-----------------------------------')
+    # test_user_samples(False, False, './submit/submit', 'medium', 50)
+    # print('-----------------------------------')
+
+    test_all_traces(False, False, './submit/submit', 'high', 0)
+    # test_user_samples(False, False, './submit/submit', 'high', 50)
+
     # if args.baseline == '' and args.quickstart == '':
-    #     test_all_traces(False, False, args.solution, trace, 0)  # 0 means the first user sample.
+    #     test_all_traces(False, False, args.solution, args.trace, 0)  # 0 means the first user sample.
     # elif args.quickstart != '':
     #     test_all_traces(False, True, args.quickstart, args.trace, 0)
     # else:

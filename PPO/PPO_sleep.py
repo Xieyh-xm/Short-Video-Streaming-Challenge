@@ -137,7 +137,6 @@ class ActorCritic(nn.Module):
         # buffer = state_numpy[:, 15:20]
         # chunk_last = state_numpy[:, 20:25]
 
-
         # throughput取10个
         buffer = state_numpy[:, 20:25]
         chunk_last = state_numpy[:, 25:30]
@@ -244,7 +243,7 @@ class PPO:
             self.buffer.logprobs.append(action_logprob)
 
             action_trans = [0 for i in range(3)]
-            action_trans[0] = action // 3  # 视频id
+            action_trans[0] = int(action / 3)
             action_trans[1] = action % 3  # 比特率
             if action == 15:  # sleep_flag
                 action_trans[2] = True

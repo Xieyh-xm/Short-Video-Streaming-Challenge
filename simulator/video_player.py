@@ -2,8 +2,6 @@
 import numpy as np
 import math
 import os
-import random
-import time
 
 BITRATE_LEVELS = 3
 VIDEO_BIT_RATE = [750, 1200, 1850]  # Kbps
@@ -15,8 +13,12 @@ USER_RET = './data/user_ret/'
 
 DISTINCT_VIDEO_NUM = 7
 
+import time
+import random
+
 ticks = time.time()
 random.seed(ticks)
+
 
 class Player:
     # initialize each new video and player buffer
@@ -28,7 +30,6 @@ class Player:
             videos = dirs
             random.shuffle(videos)
             # videos.sort()
-            # videos.sort(reverse=True)
             break
         video_name = videos[video_num % DISTINCT_VIDEO_NUM]
         for bitrate in range(BITRATE_LEVELS):

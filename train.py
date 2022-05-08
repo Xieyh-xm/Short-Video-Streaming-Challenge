@@ -126,7 +126,7 @@ def train():
     network_dict_size = 1421
     user_batch = 15
     user_dict_size = 1000
-    save_model_freq = 50  # save model frequency (in num timesteps)
+    save_model_freq = 25  # save model frequency (in num timesteps)
     # training loop
     network_list = range(network_dict_size)
     user_list = range(user_dict_size)

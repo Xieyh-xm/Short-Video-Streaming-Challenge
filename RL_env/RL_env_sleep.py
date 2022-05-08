@@ -28,7 +28,6 @@ beta = 1.85
 gamma = 1
 theta = 0.5
 ALL_VIDEO_NUM = 7
-# ALL_VIDEO_NUM = 7
 
 STATE_DIMENSION = 1
 HISTORY_LENGTH = 235
@@ -78,7 +77,7 @@ class RLEnv:
 
     def reset(self, trace_id, user_sample_id):
         print_debug('用户id = ', user_sample_id)
-        ticks = time.time()
+        ticks = int(time.time())
         self.seeds = np.random.randint(ticks, size=(7, 2))
         self.net_env = env.Environment(ticks, self.all_cooked_time[trace_id],
                                        self.all_cooked_bw[trace_id], ALL_VIDEO_NUM,

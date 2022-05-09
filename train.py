@@ -68,7 +68,7 @@ def train():
     log_dir = "PPO_logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    env_name = '20220508'
+    env_name = '20220509'
 
     log_dir = log_dir + '/' + env_name + '/'
     if not os.path.exists(log_dir):
@@ -113,14 +113,14 @@ def train():
     # initialize a PPO agent
     ppo_agent = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space,
                     action_std)
-    ppo_agent.load(directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, 100))
+    # ppo_agent.load(directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, 100))
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
     print("Started training at (GMT) : ", start_time)
 
     print("============================================================================================")
 
-    time_step = 100
+    time_step = 0
     i_episode = 0
     network_batch = 10
     network_dict_size = 1421
@@ -143,7 +143,7 @@ def train():
         current_ep_reward = 0
         time_step += 1
         count = 0
-        ticks = time.time()
+        ticks = int(time.time())
         random.seed(ticks)
         for i in random.sample(network_list, network_batch):
             for j in random.sample(user_list, user_batch):

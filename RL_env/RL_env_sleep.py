@@ -77,9 +77,8 @@ class RLEnv:
 
     def reset(self, trace_id, user_sample_id):
         print_debug('用户id = ', user_sample_id)
-        ticks = int(time.time())
-        self.seeds = np.random.randint(ticks, size=(7, 2))
-        self.net_env = env.Environment(ticks, self.all_cooked_time[trace_id],
+        self.seeds = np.random.randint(user_sample_id + 1, size=(7, 2))
+        self.net_env = env.Environment(user_sample_id + 1, self.all_cooked_time[trace_id],
                                        self.all_cooked_bw[trace_id], ALL_VIDEO_NUM,
                                        self.seeds)
         # state 状态数组

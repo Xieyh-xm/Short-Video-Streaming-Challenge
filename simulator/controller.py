@@ -20,12 +20,13 @@ DEL = 1
 VIDEO_BIT_RATE = [750, 1200, 1850]  # Kbps
 PLAYER_NUM = 5
 
+
 class Environment:
     def __init__(self, user_sample_id, all_cooked_time, all_cooked_bw, video_num, seeds):
         self.players = []
         self.seeds = seeds
         global USER_FILE
-        USER_FILE = 'logs/sample_user/user_'+str(user_sample_id)+'.txt'
+        USER_FILE = 'logs/sample_user/user_' + str(user_sample_id) + '.txt'
         self.user_file = open(USER_FILE, 'wb')
         self.user_models = []  # Record the user action(Retention class) for the current video, update synchronized with players
         self.video_num = video_num
@@ -49,7 +50,7 @@ class Environment:
             self.video_cnt += 1
             self.user_file.write((str(self.user_models[-1].get_ret_duration()) + '\n').encode())
             self.user_file.flush()
-        
+
         self.start_video_id = 0
         self.end_video_id = PLAYER_NUM - 1
 
@@ -73,7 +74,7 @@ class Environment:
             # print('--------------DEL--------------')
             self.players.remove(self.players[0])
             self.user_models.remove(self.user_models[0])
-    
+
     def get_start_video_id(self):
         return self.start_video_id
 
@@ -121,9 +122,10 @@ class Environment:
                 bitrate_cnt = min(math.ceil(self.players[0].get_play_chunk()), self.players[0].get_chunk_sum())
                 # print(math.ceil(self.players[0].get_play_chunk()), "------")
                 for i in range(1, bitrate_cnt):
-                    video_qualities.append(self.players[0].get_video_quality(i-1))
-                    smooth += abs(VIDEO_BIT_RATE[self.players[0].get_video_quality(i)] - VIDEO_BIT_RATE[self.players[0].get_video_quality(i-1)])
-                video_qualities.append(self.players[0].get_video_quality(bitrate_cnt-1))
+                    video_qualities.append(self.players[0].get_video_quality(i - 1))
+                    smooth += abs(VIDEO_BIT_RATE[self.players[0].get_video_quality(i)] - VIDEO_BIT_RATE[
+                        self.players[0].get_video_quality(i - 1)])
+                video_qualities.append(self.players[0].get_video_quality(bitrate_cnt - 1))
                 # print("Your downloaded bitrates are: ", video_qualities, ", therefore your smooth penalty is: ", smooth)
 
                 # use watch duration as an arg for the calculation of wasted_bandwidth of this current video
@@ -141,9 +143,10 @@ class Environment:
                 break
 
         if buffer < 0:  # action ends because a video stuck(needs rebuffer)
-            buffer = (-1) * action_time  # rebuf time is the remain action time(cause the player will stuck for this time too)
+            buffer = (
+                         -1) * action_time  # rebuf time is the remain action time(cause the player will stuck for this time too)
         return buffer, wasted_bw
-              
+
     def buffer_management(self, download_video_id, bitrate, sleep_time):
         buffer = 0
         rebuf = 0
@@ -159,12 +162,12 @@ class Environment:
             if self.play_video_id == self.video_num:  # if user leaves
                 end_of_video = True
             else:
-                end_of_video = (self.players[self.play_video_id-self.start_video_id].get_remain_video_num() == 0)
+                end_of_video = (self.players[self.play_video_id - self.start_video_id].get_remain_video_num() == 0)
         else:
-            video_size = self.players[download_video_id-self.start_video_id].get_video_size(bitrate)
+            video_size = self.players[download_video_id - self.start_video_id].get_video_size(bitrate)
             # print("the actual download size is:", video_size)
             self.players[download_video_id - self.start_video_id].record_download_bitrate(bitrate)
-            delay = math.floor(self.network.network_simu(video_size)+0.5)  # ms
+            delay = math.floor(self.network.network_simu(video_size) + 0.5)  # ms
             # print("the actual download delay is:", delay)
             # print("\n\n")
             # play_timeline, buffer = self.players[self.play_video_id - self.start_video_id].video_play(delay)
@@ -180,7 +183,8 @@ class Environment:
                 if self.play_video_id == self.video_num:  # if user leaves
                     end_of_video = True
                 else:
-                    end_of_video = self.players[download_video_id-self.start_video_id].video_download(VIDEO_CHUNCK_LEN)
+                    end_of_video = self.players[download_video_id - self.start_video_id].video_download(
+                        VIDEO_CHUNCK_LEN)
 
         # Sum up the bandwidth wastage
         wasted_bytes += wasted

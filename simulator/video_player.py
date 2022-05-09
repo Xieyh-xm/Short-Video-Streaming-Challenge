@@ -16,7 +16,7 @@ DISTINCT_VIDEO_NUM = 7
 import time
 import random
 
-ticks = time.time()
+ticks = int(time.time())
 random.seed(ticks)
 
 

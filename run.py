@@ -47,6 +47,8 @@ def get_smooth(net_env, download_video_id, chunk_id, quality):
         return 0
     if chunk_id == 0:  # needs to find the last chunk of the last video
         last_bitrate = last_chunk_bitrate[download_video_id - 1]
+        if last_bitrate == -1:  # the neighbour chunk is not downloaded
+            return 0
     else:
         last_bitrate = net_env.players[download_video_id - net_env.get_start_video_id()].get_downloaded_bitrate()[
             chunk_id - 1]
@@ -107,6 +109,8 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
     # sum of wasted bytes for a user
     sum_wasted_bytes = 0
     QoE = 0
+    sum_of_bitrate, sum_of_rebuf, sum_of_smooth = 0, 0, 0
+
     last_played_chunk = -1  # record the last played chunk
     bandwidth_usage = 0  # record total bandwidth usage
 
@@ -123,8 +127,15 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
             if max_watch_chunk_id >= download_chunk:  # the downloaded chunk will be played
                 if download_chunk == max_watch_chunk_id:  # maintain the last_chunk_bitrate array
                     last_chunk_bitrate[download_video_id] = bit_rate
+                    rel_id = download_video_id - net_env.get_start_video_id()
+                    if rel_id + 1 < len(net_env.user_models):  # If its not the last visible video
+                        if net_env.players[rel_id + 1].get_chunk_counter() != 0:
+                            # if the next video chunk has already been downloaded before this last chunk,
+                            # we include the smooth penalty here.
+                            next_bitrate = net_env.players[rel_id + 1].get_downloaded_bitrate()[0]
+                            smooth += abs(quality - VIDEO_BIT_RATE[next_bitrate])
                 quality = VIDEO_BIT_RATE[bit_rate]
-                smooth = get_smooth(net_env, download_video_id, download_chunk, quality)
+                smooth += get_smooth(net_env, download_video_id, download_chunk, quality)
                 print("Causing smooth penalty: ", smooth, file=log_file)
 
         delay, rebuf, video_size, end_of_video, \
@@ -145,32 +156,18 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
             current_bitrate = net_env.players[0].get_video_quality(max(int(current_chunk - 1e-10), 0))
             print("Playing Video ", play_video_id, " chunk (", current_chunk, " / ", net_env.players[0].get_chunk_sum(),
                   ") with bitrate ", current_bitrate, file=log_file)
-            # if max(int(current_chunk - 1e-10), 0) == 0 or last_played_chunk == max(int(current_chunk - 1e-10), 0):
-            #     # is the first chunk or the same chunk as last time(already calculated) of the current video
-            #     smooth = 0
-            # else:  # needs to calc smooth
-            #     last_bitrate = net_env.players[0].get_video_quality(int(current_chunk - 1e-10) - 1)
-            #     smooth = current_bitrate - last_bitrate
-            #     if smooth == 0:
-            #         print("Your bitrate is stable and smooth. ", file=log_file)
-            #     else:
-            #         print("Your bitrate changes from ", last_bitrate, " to ", current_bitrate, ".", file=log_file)
-            # last_played_chunk = max(int(current_chunk - 1e-10), 0)
         else:
             print("Finished Playing!", file=log_file)
         if rebuf != 0:
             print("You caused rebuf for Video ", play_video_id, " of ", rebuf, " ms", file=log_file)
         print("*****************", file=log_file)
 
-        # Update QoE:
-        # qoe = alpha * VIDEO_BIT_RATE[bit_rate] \
-        #           - beta * rebuf \
-        #           - gamma * np.abs(VIDEO_BIT_RATE[bit_rate] - VIDEO_BIT_RATE[last_bit_rate])
-
         one_step_QoE = alpha * quality / 1000. - beta * rebuf / 1000. - gamma * smooth / 1000.
         QoE += one_step_QoE
-        # if rebuf != 0:
-        #     print("bitrate:", VIDEO_BIT_RATE[bit_rate], "rebuf:", rebuf, "smooth:", smooth)
+        '''计算各项指标占比'''
+        sum_of_bitrate += alpha * quality / 1000.
+        sum_of_rebuf += beta * rebuf / 1000.
+        sum_of_smooth += gamma * smooth / 1000.
 
         if QoE < MIN_QOE:  # Prevent dead loops
             print('Your QoE is too low...(Your video seems to have stuck forever) Please check for errors!')
@@ -208,20 +205,23 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
 
     # end the test
     print('------------trace ', trace_id, '--------------\n\n', file=log_file)
-    return np.array([S, bandwidth_usage, QoE, sum_wasted_bytes, net_env.get_wasted_time_ratio()])
+    return np.array(
+        [S, bandwidth_usage, QoE, sum_wasted_bytes, net_env.get_wasted_time_ratio(), sum_of_bitrate, sum_of_rebuf,
+         sum_of_smooth])
 
 
 def test_all_traces(isBaseline, isQuickstart, user_id, trace, user_sample_id):
-    avg = np.zeros(5) * 1.0
+    avg = np.zeros(8) * 1.0
     cooked_trace_folder = 'data/network_traces/' + trace + '/'
     global all_cooked_time, all_cooked_bw
     all_cooked_time, all_cooked_bw = short_video_load_trace.load_trace(cooked_trace_folder)
-    for i in range(1):
-        # for i in range(len(all_cooked_time)):
+    # for i in range(1):
+    for i in range(len(all_cooked_time)):
         # print('------------trace ', i, '--------------')
         avg += test(isBaseline, isQuickstart, user_id, i, user_sample_id)
         # print('---------------------------------------\n\n')
     avg /= len(all_cooked_time)
+
     # print("\n\nYour average indexes under [", trace, "] network is: ")
     # print("Score: ", avg[0])
     # print("Bandwidth Usage: ", avg[1])
@@ -233,7 +233,7 @@ def test_all_traces(isBaseline, isQuickstart, user_id, trace, user_sample_id):
 
 def test_user_samples(isBaseline, isQuickstart, user_id, trace, sample_cnt):  # test 50 user sample
     seed_for_sample = np.random.randint(10000, size=(1001, 1))
-    avgs = np.zeros(5)
+    avgs = np.zeros(8)
     for j in range(sample_cnt):
         global seeds
         np.random.seed(seed_for_sample[j])
@@ -243,19 +243,23 @@ def test_user_samples(isBaseline, isQuickstart, user_id, trace, sample_cnt):  # 
     print("Score: ", avgs[0])
     print("Bandwidth Usage: ", avgs[1])
     print("QoE: ", avgs[2])
-    print("Sum Wasted Bytes: ", avgs[3])
-    print("Wasted time ratio: ", avgs[4])
+    # print("Sum Wasted Bytes: ", avgs[3])
+    # print("Wasted time ratio: ", avgs[4])
+    '''计算各项指标占比'''
+    print("\nsum_of_bitrate = ", avgs[5])
+    print("sum_of_rebuf = ", -avgs[6])
+    print("sum_of_smooth = ", -avgs[7])
+    print("Bandwidth Usage = ", -theta * avgs[1] * 8 / 1000000., "  ( sum_wasted_bytes = ",
+          -theta * avgs[3] * 8 / 1000000., " )")
+    print('-----------------------------------')
 
 
 if __name__ == '__main__':
     assert args.trace in ["mixed", "high", "low", "medium"]
-    # test_user_samples(False, False, './submit/submit', 'low', 50)
-    # print('-----------------------------------')
-    # test_user_samples(False, False, './submit/submit', 'medium', 50)
-    # print('-----------------------------------')
-
-    test_all_traces(False, False, './submit/submit', 'high', 0)
-    # test_user_samples(False, False, './submit/submit', 'high', 50)
+    test_user_samples(False, False, './submit/submit', 'low', 50)
+    test_user_samples(False, False, './submit/submit', 'medium', 50)
+    test_user_samples(False, False, './submit/submit', 'high', 50)
+    # # test_all_traces(False, False, './submit/submit', 'high', 0)
 
     # if args.baseline == '' and args.quickstart == '':
     #     test_all_traces(False, False, args.solution, args.trace, 0)  # 0 means the first user sample.

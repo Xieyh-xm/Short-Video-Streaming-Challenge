@@ -108,8 +108,14 @@ class ActorCritic(nn.Module):
                     mask[i * 3 + j] = 1
         if buffer[0] <= 2. and chunk_last[0] != 0:  # 强制下载第一个视频
             mask[15] = 0  # 不允许sleep
-            for i in range(3, 15):
-                mask[i] = 0
+            # for i in range(3, 15):
+            #     mask[i] = 0
+            if buffer[0] >= 1:
+                for i in range(3, 15):
+                    mask[i] = 0
+            else:
+                for i in range(1, 15):
+                    mask[i] = 0
 
         mask = torch.tensor(mask).to(device)
         if self.has_continuous_action_space:

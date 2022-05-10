@@ -4,7 +4,7 @@ import math
 import itertools
 
 # NN_MODEL = "/home/team/" + "ParttimeJob" + "/submit/results/PPO_3_0_650.pth"
-NN_MODEL = "submit/submit/results/PPO_4_0_200.pth"
+NN_MODEL = "submit/submit/results/PPO_20220510_0_200.pth"
 
 lr_actor = 0.0003  # learning rate for actor network
 lr_critic = 0.001  # learning rate for critic network

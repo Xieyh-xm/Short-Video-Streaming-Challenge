@@ -54,22 +54,37 @@ class ActorCritic(nn.Module):
                 nn.Linear(64, action_dim),
             )
         else:
+            # self.actor = nn.Sequential(
+            #     nn.Linear(state_dim, 128),
+            #     nn.ReLU(),
+            #     nn.Linear(128, 256),
+            #     nn.Tanh(),
+            #     nn.Linear(256, 64),
+            #     nn.ReLU(),
+            #     nn.Linear(64, 16),
+            #     nn.Softmax(dim=-1)
+            # )
             self.actor = nn.Sequential(
                 nn.Linear(state_dim, 128),
                 nn.ReLU(),
-                nn.Linear(128, 128),
-                nn.Tanh(),
                 nn.Linear(128, 64),
-                nn.ReLU(),
+                nn.Tanh(),
                 nn.Linear(64, 16),
                 nn.Softmax(dim=-1)
             )
             self.actor.to(device)
 
+        # self.critic = nn.Sequential(
+        #     nn.Linear(state_dim, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 64),
+        #     nn.ReLU(),
+        #     nn.Linear(64, 1),
+        # )
         self.critic = nn.Sequential(
             nn.Linear(state_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
             nn.ReLU(),
             nn.Linear(128, 64),
             nn.ReLU(),
@@ -108,10 +123,16 @@ class ActorCritic(nn.Module):
             for j in range(3):
                 if chunk_last[i] != 0.0:
                     mask[i * 3 + j] = 1
-        if buffer[0] <= 2. and chunk_last[0] != 0:  # 强制下载第一个视频
+        if buffer[0] <= 1.5 and chunk_last[0] != 0:  # 强制下载第一个视频
             mask[15] = 0  # 不允许sleep
-            for i in range(3, 15):
-                mask[i] = 0
+            # for i in range(3, 15):
+            #     mask[i] = 0
+            if buffer[0] >= 0.8:
+                for i in range(3, 15):
+                    mask[i] = 0
+            else:
+                for i in range(1, 15):
+                    mask[i] = 0
 
         print_debug('mask = ' + str(mask))
         mask = torch.tensor(mask).to(device)
@@ -149,10 +170,16 @@ class ActorCritic(nn.Module):
                     if chunk_last[k, i] != 0.0:
                         mask[k, i * 3 + j] = 1
         for k in range(state_numpy.shape[0]):
-            if buffer[k, 0] <= 2 and chunk_last[k, 0] != 0:
+            if buffer[k, 0] <= 1.5 and chunk_last[k, 0] != 0:
                 mask[k, 15] = 0
-                for i in range(3, 15):
-                    mask[k, i] = 0
+                # for i in range(3, 15):
+                #     mask[k, i] = 0
+                if buffer[k, 0] >= 0.8:
+                    for i in range(3, 15):
+                        mask[k, i] = 0
+                else:
+                    for i in range(1, 15):
+                        mask[k, i] = 0
         mask = torch.tensor(mask).to(device)
         if self.has_continuous_action_space:
             action_mean = self.actor(state)

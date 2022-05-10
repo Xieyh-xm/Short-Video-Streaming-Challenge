@@ -38,6 +38,23 @@ TAU = 250
 STATE_NUM = 35
 ACTION_NUM = 16
 
+last_chunk_bitrate = [-1, -1, -1, -1, -1, -1, -1]
+
+
+# calculate the smooth penalty for an action to download:
+# chunk:[chunk_id] of the video:[download_video_id] with bitrate:[quality]
+def get_smooth(net_env, download_video_id, chunk_id, quality):
+    if download_video_id == 0 and chunk_id == 0:  # is the first chunk of all
+        return 0
+    if chunk_id == 0:  # needs to find the last chunk of the last video
+        last_bitrate = last_chunk_bitrate[download_video_id - 1]
+        if last_bitrate == -1:  # the neighbour chunk is not downloaded
+            return 0
+    else:
+        last_bitrate = net_env.players[download_video_id - net_env.get_start_video_id()].get_downloaded_bitrate()[
+            chunk_id - 1]
+    return abs(quality - VIDEO_BIT_RATE[last_bitrate])
+
 
 class RLEnv:
     def __init__(self):
@@ -172,13 +189,17 @@ class RLEnv:
             download_chunk = self.net_env.players[
                 download_video_id - self.net_env.get_start_video_id()].get_chunk_counter()
             if max_watch_chunk_id >= download_chunk:  # the downloaded chunk will be played
+                if download_chunk == max_watch_chunk_id:  # maintain the last_chunk_bitrate array
+                    last_chunk_bitrate[download_video_id] = bit_rate
+                    rel_id = download_video_id - self.net_env.get_start_video_id()
+                    if rel_id + 1 < len(self.net_env.user_models):  # If its not the last visible video
+                        if self.net_env.players[rel_id + 1].get_chunk_counter() != 0:
+                            # if the next video chunk has already been downloaded before this last chunk,
+                            # we include the smooth penalty here.
+                            next_bitrate = self.net_env.players[rel_id + 1].get_downloaded_bitrate()[0]
+                            smooth += abs(quality - VIDEO_BIT_RATE[next_bitrate])
                 quality = VIDEO_BIT_RATE[bit_rate]
-                # 保存下载的chunk quality
-                self.play_chunk_list[download_video_id - self.last_play_video_id].append(quality)
-                if self.last_bitrate != -1:  # is not the first chunk to play
-                    smooth = abs(quality - VIDEO_BIT_RATE[self.last_bitrate])
-                    # print("downloading ", download_video_id, "chunk ", download_chunk, ", bitrate switching from ", last_bitrate, " to ", bit_rate)
-                self.last_bitrate = bit_rate
+                smooth += get_smooth(self.net_env, download_video_id, download_chunk, quality)
 
         # 和环境交互
         delay, rebuf, video_size, end_of_video, \
@@ -349,6 +370,10 @@ class RLEnv:
             if chunk_play_remain >= 10:
                 print_debug('>10')
                 for i in range(10):
+                    if -chunk_play_remain + i - 2 < -len(self.net_env.players[0].user_retent_rate):
+                        print(-chunk_play_remain + i)
+                        print(len(self.net_env.players[0].user_retent_rate))
+                        print("error")
                     self.conditional_retent_rate[0][i] = float(
                         self.net_env.players[0].user_retent_rate[-chunk_play_remain + i - 2]) / \
                                                          float(self.net_env.players[

@@ -45,8 +45,8 @@ def train():
     eps_clip = 0.2  # clip parameter for PPO
     gamma = 0.99  # discount factor
 
-    lr_actor = 0.0003  # learning rate for actor network
-    lr_critic = 0.001  # learning rate for critic network
+    lr_actor = 0.0001  # learning rate for actor network
+    lr_critic = 0.0005  # learning rate for critic network
 
     random_seed = 0  # set random seed if required (0 = no random seed)
     #####################################################
@@ -68,7 +68,7 @@ def train():
     log_dir = "PPO_logs"
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    env_name = '20220509'
+    env_name = '20220510'
 
     log_dir = log_dir + '/' + env_name + '/'
     if not os.path.exists(log_dir):
@@ -113,16 +113,18 @@ def train():
     # initialize a PPO agent
     ppo_agent = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space,
                     action_std)
-    # ppo_agent.load(directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, 100))
+    ppo_agent.load(directory + "PPO_{}_{}_{}.pth".format(env_name, random_seed, 125))
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
     print("Started training at (GMT) : ", start_time)
 
     print("============================================================================================")
 
-    time_step = 0
+    time_step = 125
     i_episode = 0
     network_batch = 10
+    # network_batch = 3
+    # network_dict_size = 1421
     network_dict_size = 1421
     user_batch = 15
     user_dict_size = 1000

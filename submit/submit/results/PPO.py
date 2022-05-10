@@ -99,7 +99,7 @@ class ActorCritic(nn.Module):
             for j in range(3):
                 if chunk_last[i] != 0.0:
                     mask[i * 3 + j] = 1
-        if buffer[0] <= 1. and chunk_last[0] != 0:
+        if buffer[0] <= 2. and chunk_last[0] != 0:
             for i in range(3, 15):
                 mask[i] = 0
         # print_debug('mask = ' + str(mask))
@@ -139,7 +139,7 @@ class ActorCritic(nn.Module):
                     if chunk_last[k, i] != 0.0:
                         mask[k, i * 3 + j] = 1
         for k in range(state_numpy.shape[0]):
-            if buffer[k, 0] <= 1. and chunk_last[k, 0] != 0:
+            if buffer[k, 0] <= 2. and chunk_last[k, 0] != 0:
                 for i in range(3, 15):
                     mask[k, i] = 0
         mask = torch.tensor(mask).to(device)

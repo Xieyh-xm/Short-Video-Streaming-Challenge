@@ -1,10 +1,10 @@
 import torch
 import math
 import itertools
-from results.PPO_sleep import PPO
+from results.PPO_sleep_1 import PPO
 
 # NN_MODEL = "/home/team/" + "ParttimeJob" + "/submit/results/PPO_mix_train_0_350.pth"
-NN_MODEL = "submit/submit/results/PPO_mix_train_0_350.pth"
+NN_MODEL = "submit/submit/results/PPO_20220510_0_200.pth"
 
 lr_actor = 0.0001  # learning rate for actor network
 lr_critic = 0.001  # learning rate for critic network
@@ -138,7 +138,6 @@ class Algorithm:
             return 0, 0, 0
         else:
             # 检查player长度
-
             player_length = len(Players)
             if self.last_sleep_time > 0:
                 sleep_flag = True
@@ -391,7 +390,7 @@ class Algorithm:
             sleep_time = 0
         self.last_sleep_time = sleep_time
 
-        print('当前播放视频id ', play_video_id, '当前决策为下载视频', self.download_video_id, '，sleep_tiem=', sleep_time, '码率等级为',
-              bit_rate, 'buffer',
-              self.newstate[0, 20:25])
+        # print('当前播放视频id ', play_video_id, '当前决策为下载视频', self.download_video_id, '，sleep_tiem=', sleep_time, '码率等级为',
+        #       bit_rate, 'buffer',
+        #       self.newstate[0, 20:25])
         return self.download_video_id, bit_rate, sleep_time

@@ -17,7 +17,8 @@ args = parser.parse_args()
 
 RANDOM_SEED = 42  # the random seed for user retention
 np.random.seed(RANDOM_SEED)
-seeds = np.random.randint(100, size=(7, 2))
+# seeds = np.random.randint(100, size=(7, 2))
+seeds = np.random.randint(100, size=(9, 2))
 
 VIDEO_BIT_RATE = [750, 1200, 1850]  # Kbps
 SUMMARY_DIR = 'logs'
@@ -29,7 +30,8 @@ alpha = 1
 beta = 1.85
 gamma = 1
 theta = 0.5
-ALL_VIDEO_NUM = 7
+# ALL_VIDEO_NUM = 7
+ALL_VIDEO_NUM = 9
 # baseline_QoE = 600  # baseline's QoE
 # TOLERANCE = 0.1  # The tolerance of the QoE decrease
 MIN_QOE = -1e4
@@ -37,7 +39,8 @@ all_cooked_time = []
 all_cooked_bw = []
 
 # record the last chunk(which will be played) of each video to aid the calculation of smoothness
-last_chunk_bitrate = [-1, -1, -1, -1, -1, -1, -1]
+# last_chunk_bitrate = [-1, -1, -1, -1, -1, -1, -1]
+last_chunk_bitrate = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
 
 
 # calculate the smooth penalty for an action to download:
@@ -74,7 +77,7 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
         sys.path.remove('./quickstart/')
     else:  # Testing participant's algorithm
         sys.path.append(user_id)
-        import solution_sleep as Solution
+        import solution_lstm as Solution
         sys.path.remove(user_id)
         LOG_FILE = 'logs/log.txt'
         log_file = open(LOG_FILE, 'w')
@@ -237,14 +240,15 @@ def test_user_samples(isBaseline, isQuickstart, user_id, trace, sample_cnt):  # 
     for j in range(sample_cnt):
         global seeds
         np.random.seed(seed_for_sample[j])
-        seeds = np.random.randint(10000, size=(7, 2))  # reset the sample random seeds
+        # seeds = np.random.randint(10000, size=(7, 2))  # reset the sample random seeds
+        seeds = np.random.randint(10000, size=(9, 2))
         avgs += test_all_traces(isBaseline, isQuickstart, user_id, trace, j)
     avgs /= sample_cnt
     print("Score: ", avgs[0])
     print("Bandwidth Usage: ", avgs[1])
     print("QoE: ", avgs[2])
     # print("Sum Wasted Bytes: ", avgs[3])
-    # print("Wasted time ratio: ", avgs[4])
+    print("Wasted time ratio: ", avgs[4])
     '''计算各项指标占比'''
     print("\nsum_of_bitrate = ", avgs[5])
     print("sum_of_rebuf = ", -avgs[6])
@@ -259,7 +263,7 @@ if __name__ == '__main__':
     test_user_samples(False, False, './submit/submit', 'low', 50)
     test_user_samples(False, False, './submit/submit', 'medium', 50)
     test_user_samples(False, False, './submit/submit', 'high', 50)
-    # # test_all_traces(False, False, './submit/submit', 'high', 0)
+    # test_all_traces(False, False, './submit/submit', 'high', 0)
 
     # if args.baseline == '' and args.quickstart == '':
     #     test_all_traces(False, False, args.solution, args.trace, 0)  # 0 means the first user sample.

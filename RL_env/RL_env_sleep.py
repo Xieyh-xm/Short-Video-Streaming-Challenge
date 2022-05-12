@@ -27,7 +27,8 @@ alpha = 1
 beta = 1.85
 gamma = 1
 theta = 0.5
-ALL_VIDEO_NUM = 7
+# ALL_VIDEO_NUM = 7
+ALL_VIDEO_NUM = 9
 
 STATE_DIMENSION = 1
 HISTORY_LENGTH = 235
@@ -38,7 +39,7 @@ TAU = 250
 STATE_NUM = 35
 ACTION_NUM = 16
 
-last_chunk_bitrate = [-1, -1, -1, -1, -1, -1, -1]
+last_chunk_bitrate = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
 
 
 # calculate the smooth penalty for an action to download:
@@ -68,7 +69,8 @@ class RLEnv:
         self.user_sample_id = 0
         self.trace_id = 0
         self.all_cooked_time, self.all_cooked_bw = short_video_load_trace.load_trace(net_trace_dict)
-        self.seeds = np.random.randint(10000, size=(7, 2))
+        # self.seeds = np.random.randint(10000, size=(7, 2))
+        self.seeds = np.random.randint(10000, size=(ALL_VIDEO_NUM, 2))
         self.net_env = env.Environment(self.user_sample_id, self.all_cooked_time[self.trace_id],
                                        self.all_cooked_bw[self.trace_id], ALL_VIDEO_NUM,
                                        self.seeds)
@@ -94,7 +96,8 @@ class RLEnv:
 
     def reset(self, trace_id, user_sample_id):
         print_debug('用户id = ', user_sample_id)
-        self.seeds = np.random.randint(user_sample_id + 1, size=(7, 2))
+        # self.seeds = np.random.randint(user_sample_id + 1, size=(7, 2))
+        self.seeds = np.random.randint(user_sample_id + 1, size=(ALL_VIDEO_NUM, 2))
         self.net_env = env.Environment(user_sample_id + 1, self.all_cooked_time[trace_id],
                                        self.all_cooked_bw[trace_id], ALL_VIDEO_NUM,
                                        self.seeds)

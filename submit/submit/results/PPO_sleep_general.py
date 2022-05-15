@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 from torch.distributions import MultivariateNormal
 from torch.distributions import Categorical
+from myPrint import print_debug
 
 ################################## set device ##################################
 print("============================================================================================")
@@ -114,6 +115,7 @@ class ActorCritic(nn.Module):
         buffer = state_numpy[0, 20:25]
         chunk_last = state_numpy[0, 25:30]
 
+        print_debug('chunk_last = ' + str(chunk_last))
         mask = np.zeros(16)
         mask[15] = 1  # 允许sleep
         # 如果没有可下载的块，则不再被允许下载
@@ -121,17 +123,12 @@ class ActorCritic(nn.Module):
             for j in range(3):
                 if chunk_last[i] != 0.0:
                     mask[i * 3 + j] = 1
-        if buffer[0] <= 1.5 and chunk_last[0] != 0:  # 强制下载第一个视频
+        if buffer[0] <= 1.0 and chunk_last[0] != 0:  # 强制下载第一个视频
             mask[15] = 0  # 不允许sleep
-            # for i in range(3, 15):
-            #     mask[i] = 0
-            if buffer[0] >= 0.8:
-                for i in range(3, 15):
-                    mask[i] = 0
-            else:
-                for i in range(1, 15):
-                    mask[i] = 0
+            for i in range(3, 15):
+                mask[i] = 0
 
+        print_debug('mask = ' + str(mask))
         mask = torch.tensor(mask).to(device)
         if self.has_continuous_action_space:
             action_mean = self.actor(state)
@@ -140,11 +137,13 @@ class ActorCritic(nn.Module):
         else:
             action_probs = self.actor(state)
             action_probs = action_probs * mask
+            print_debug('遮蔽后action_probs =' + str(action_probs))
             if torch.sum(action_probs) != 0:
                 dist = Categorical(action_probs)
         # print(action_probs)
         action = action_probs.argmax()
         action_logprob = dist.log_prob(action)
+        print_debug('action = ' + str(action))
         return action.detach(), action_logprob.detach(), ifsleep
 
     def evaluate(self, state, action):
@@ -165,16 +164,10 @@ class ActorCritic(nn.Module):
                     if chunk_last[k, i] != 0.0:
                         mask[k, i * 3 + j] = 1
         for k in range(state_numpy.shape[0]):
-            if buffer[k, 0] <= 1.5 and chunk_last[k, 0] != 0:
+            if buffer[k, 0] <= 1.0 and chunk_last[k, 0] != 0:
                 mask[k, 15] = 0
-                # for i in range(3, 15):
-                #     mask[k, i] = 0
-                if buffer[k, 0] >= 0.8:
-                    for i in range(3, 15):
-                        mask[k, i] = 0
-                else:
-                    for i in range(1, 15):
-                        mask[k, i] = 0
+                for i in range(3, 15):
+                    mask[k, i] = 0
         mask = torch.tensor(mask).to(device)
         if self.has_continuous_action_space:
             action_mean = self.actor(state)

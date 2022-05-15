@@ -34,9 +34,10 @@ STATE_DIMENSION = 1
 HISTORY_LENGTH = 235
 PRINT_FLAG = False
 
-TAU = 250
+TAU = 500
 
 STATE_NUM = 35
+# STATE_NUM = 30
 ACTION_NUM = 16
 
 last_chunk_bitrate = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
@@ -63,7 +64,7 @@ class RLEnv:
         self.newstate = torch.zeros(1, STATE_NUM)
         self.all_cooked_time = []
         self.all_cooked_bw = []
-        net_trace_dict = './data/network_traces/mix_train/'
+        net_trace_dict = './data/network_traces/mix_withoutmixed/'
         video_trace_dict = './data/short_video_size'
         ret_trace_dict = './data/user_ret'
         self.user_sample_id = 0
@@ -78,6 +79,9 @@ class RLEnv:
         self.observation_space = spaces.Discrete(STATE_NUM)
 
         # ======== extra param ========
+        self.playtime_line = 0
+        self.update_time = 0
+
         self.last_bitrate = -1
         # caculate reward
         self.last_play_video_id = 0
@@ -101,6 +105,8 @@ class RLEnv:
         self.net_env = env.Environment(user_sample_id + 1, self.all_cooked_time[trace_id],
                                        self.all_cooked_bw[trace_id], ALL_VIDEO_NUM,
                                        self.seeds)
+        self.playtime_line = 0
+        self.update_time = 0
         # state 状态数组
         self.left_chunk_cnt = []  # 剩余chunk数
         # self.state = torch.zeros((1, STATE_DIMENSION, HISTORY_LENGTH))
@@ -109,10 +115,16 @@ class RLEnv:
         self.last_play_chunk_idx = -1
         self.last_residual_time = 0
         # 填充state
+
         self.past_10_throughput = [1000000 for i in range(10)]
+        # self.past_10_throughput = [1300000 for i in range(10)]
+
         self.past_10_delay = [1000 for i in range(10)]
         self.cache = [0 for i in range(5)]
+
+        # self.last_5_bitrate = [1 for i in range(5)]
         self.last_5_bitrate = [0 for i in range(5)]
+
         self.future_videosize = [[[0 for t in range(10)] for i in range(3)] for k in range(5)]
 
         self.conditional_retent_rate = [[0 for t in range(10)] for k in range(5)]
@@ -173,6 +185,9 @@ class RLEnv:
 
         # 决策
         download_video_id = int(action[0])
+
+        retent_rate = float(self.conditional_retent_rate[download_video_id][0])
+
         download_video_id += self.offset
         bit_rate = int(action[1])
         if action[2]:
@@ -207,6 +222,7 @@ class RLEnv:
         # 和环境交互
         delay, rebuf, video_size, end_of_video, \
         play_video_id, waste_bytes = self.net_env.buffer_management(download_video_id, bit_rate, sleep_time)
+        self.playtime_line += delay
         player_length = len(self.net_env.players)
         print_debug('此时视频序列实际长度为' + str(player_length))
         # 获取state状态
@@ -216,6 +232,16 @@ class RLEnv:
         else:
             self.past_10_throughput.pop(0)
             self.past_10_throughput.append(video_size * 8 / delay * 1000.0)
+            self.update_time = self.playtime_line
+
+        # if sleep_flag:
+        #     pass
+        # else:
+        #     if self.playtime_line - self.update_time >= 500.:
+        #         self.past_10_throughput.pop(0)
+        #         self.past_10_throughput.append(video_size * 8 / delay * 1000.0)
+        #         self.update_time = self.playtime_line
+
         # 2.过去的delay
         if sleep_flag:
             pass
@@ -343,6 +369,7 @@ class RLEnv:
             for i in range(jump_number):
                 self.last_5_bitrate.pop(0)
                 self.last_5_bitrate.append(0)
+                # self.last_5_bitrate.append(1)
             if download_video_id - self.offset >= 0 and not sleep_flag:
                 self.last_5_bitrate[download_video_id - self.offset] = bit_rate
             # 去掉播放完的视频
@@ -425,7 +452,15 @@ class RLEnv:
             current_chunk = self.net_env.players[0].get_play_chunk()
             # print(current_chunk)
             current_bitrate = self.net_env.players[0].get_video_quality(max(int(current_chunk - 1e-10), 0))
-        one_step_QOE = alpha * quality / 1000. - beta * rebuf / 1000. - gamma * smooth / 1000 - theta * 8 * video_size / 1000000.
+
+        # one_step_QOE = alpha * quality / 1000.- beta * rebuf / 1000. - gamma * smooth / 1000- theta * 8 * video_size / 1000000.
+
+        one_step_QOE = retent_rate * (
+                alpha * quality / 1000.) - beta * rebuf / 1000. - retent_rate * (
+                               gamma * smooth / 1000) - theta * 8 * video_size / 1000000.
+
+        # if sleep_flag:
+        #     one_step_QOE -= 0.1
 
         if play_video_id >= ALL_VIDEO_NUM:  # 全部播放完为done
             # print('结束了')

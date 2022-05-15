@@ -77,7 +77,7 @@ def test(isBaseline, isQuickstart, user_id, trace_id, user_sample_id):
         sys.path.remove('./quickstart/')
     else:  # Testing participant's algorithm
         sys.path.append(user_id)
-        import solution_lstm as Solution
+        import solution_nochange as Solution
         sys.path.remove(user_id)
         LOG_FILE = 'logs/log.txt'
         log_file = open(LOG_FILE, 'w')

@@ -123,14 +123,10 @@ class ActorCritic(nn.Module):
             for j in range(3):
                 if chunk_last[i] != 0.0:
                     mask[i * 3 + j] = 1
-        if buffer[0] <= 1.5 and chunk_last[0] != 0:  # 强制下载第一个视频
+        if buffer[0] <= 1.0 and chunk_last[0] != 0:  # 强制下载第一个视频
             mask[15] = 0  # 不允许sleep
-            if buffer[0] >= 0.8:
-                for i in range(3, 15):
-                    mask[i] = 0
-            else:
-                for i in range(1, 15):
-                    mask[i] = 0
+            for i in range(3, 15):
+                mask[i] = 0
 
         print_debug('mask = ' + str(mask))
         mask = torch.tensor(mask).to(device)
@@ -168,14 +164,10 @@ class ActorCritic(nn.Module):
                     if chunk_last[k, i] != 0.0:
                         mask[k, i * 3 + j] = 1
         for k in range(state_numpy.shape[0]):
-            if buffer[k, 0] <= 1.5 and chunk_last[k, 0] != 0:
+            if buffer[k, 0] <= 1.0 and chunk_last[k, 0] != 0:
                 mask[k, 15] = 0
-                if buffer[k, 0] >= 0.8:
-                    for i in range(3, 15):
-                        mask[k, i] = 0
-                else:
-                    for i in range(1, 15):
-                        mask[k, i] = 0
+                for i in range(3, 15):
+                    mask[k, i] = 0
         mask = torch.tensor(mask).to(device)
         if self.has_continuous_action_space:
             action_mean = self.actor(state)
@@ -312,7 +304,8 @@ class PPO:
             surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
 
             # final loss of clipped objective PPO
-            loss = -torch.min(surr1, surr2) + 0.5 * self.MseLoss(state_values, rewards) - 0.01 * dist_entropy
+            # loss = -torch.min(surr1, surr2) + 0.5 * self.MseLoss(state_values, rewards) - 0.01 * dist_entropy
+            loss = -torch.min(surr1, surr2) + 0.5 * self.MseLoss(state_values, rewards) - 0.02 * dist_entropy
 
             # take gradient step
             self.optimizer.zero_grad()

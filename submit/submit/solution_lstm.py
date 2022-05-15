@@ -5,7 +5,7 @@ from results.PPO_sleep_lstm import PPO
 import collections
 
 # NN_MODEL = "/home/team/" + "ParttimeJob" + "/submit/results/PPO_mix_train_0_350.pth"
-NN_MODEL = "submit/submit/results/PPO_lstm_0_225.pth"
+NN_MODEL = "submit/submit/results/PPO_lstm_0_250.pth"
 
 lr_actor = 0.0001  # learning rate for actor network
 lr_critic = 0.0005  # learning rate for critic network

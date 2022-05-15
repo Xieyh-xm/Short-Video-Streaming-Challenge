@@ -29,3 +29,4 @@ data/network_traces/mix_medium
 data/network_traces/mix_low
 data/network_traces/mix_train
 data/network_traces/mix_mixed
+data/network_traces/mix_withoutmixed
